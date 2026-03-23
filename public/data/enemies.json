@@ -1,0 +1,86 @@
+[
+  {
+    "id": "enemy_rat_small",
+    "name": "Small Rat",
+    "role": "chaser",
+    "tier": "normal",
+    "floorMin": 1,
+    "floorMax": 4,
+    "stats": {
+      "hp": 20,
+      "damage": 4,
+      "speed": 1.4,
+      "attackSpeed": 1,
+      "attackRange": 1,
+      "aggroRange": 5,
+      "poise": 0
+    },
+    "behavior": {
+      "aiType": "chase_attack",
+      "canRetreat": false,
+      "canStrafe": false
+    },
+    "drops": { "lootTableId": "loot_enemy_floor_1" },
+    "xp": { "kill": 5 },
+    "render": {
+      "sprite": "enemy_rat_small.png",
+      "scale": 1
+    }
+  },
+  {
+    "id": "enemy_skeleton_basic",
+    "name": "Skeleton",
+    "role": "chaser",
+    "tier": "normal",
+    "floorMin": 1,
+    "floorMax": 8,
+    "stats": {
+      "hp": 32,
+      "damage": 6,
+      "speed": 1.1,
+      "attackSpeed": 1.1,
+      "attackRange": 1,
+      "aggroRange": 6,
+      "poise": 1
+    },
+    "behavior": {
+      "aiType": "chase_attack",
+      "canRetreat": false,
+      "canStrafe": false
+    },
+    "drops": { "lootTableId": "loot_enemy_floor_1" },
+    "xp": { "kill": 7 },
+    "render": {
+      "sprite": "enemy_skeleton_basic.png",
+      "scale": 1
+    }
+  },
+  {
+    "id": "enemy_archer_broken",
+    "name": "Broken Archer",
+    "role": "ranged",
+    "tier": "veteran",
+    "floorMin": 3,
+    "floorMax": 10,
+    "stats": {
+      "hp": 28,
+      "damage": 8,
+      "speed": 1,
+      "attackSpeed": 1.3,
+      "attackRange": 5,
+      "aggroRange": 7,
+      "poise": 1
+    },
+    "behavior": {
+      "aiType": "kite_shoot",
+      "canRetreat": true,
+      "canStrafe": true
+    },
+    "drops": { "lootTableId": "loot_enemy_floor_3" },
+    "xp": { "kill": 10 },
+    "render": {
+      "sprite": "enemy_archer_broken.png",
+      "scale": 1
+    }
+  }
+]

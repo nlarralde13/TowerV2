@@ -1,0 +1,206 @@
+[
+  {
+    "id": "loot_enemy_floor_1",
+    "rolls": 1,
+    "entries": [
+      {
+        "itemId": "weapon_basic_sword",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_basic_headgear",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_basic_leggings",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "trinket_hp_gem",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
+      }
+    ]
+  },
+  {
+    "id": "loot_enemy_floor_3",
+    "rolls": 1,
+    "entries": [
+      {
+        "itemId": "weapon_basic_sword",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_basic_headgear",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_basic_leggings",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "trinket_hp_gem",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
+      }
+    ]
+  },
+  {
+    "id": "loot_floor_1_room",
+    "rolls": 1,
+    "entries": [
+      {
+        "itemId": "mat_scrap_iron",
+        "weight": 45,
+        "minQty": 1,
+        "maxQty": 3
+      },
+      {
+        "itemId": "consumable_small_potion",
+        "weight": 20,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_basic_headgear",
+        "weight": 8,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_basic_leggings",
+        "weight": 8,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "trinket_hp_gem",
+        "weight": 7,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_worn_chest",
+        "weight": 6,
+        "minQty": 1,
+        "maxQty": 1
+      }
+    ]
+  },
+  {
+    "id": "loot_floor_1_chest",
+    "rolls": 2,
+    "entries": [
+      {
+        "itemId": "weapon_basic_sword",
+        "weight": 14,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "weapon_rusty_sword",
+        "weight": 15,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "weapon_hatchet",
+        "weight": 8,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_basic_headgear",
+        "weight": 10,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_basic_leggings",
+        "weight": 9,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "trinket_hp_gem",
+        "weight": 9,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "tool_rope",
+        "weight": 10,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "mat_tower_cloth",
+        "weight": 30,
+        "minQty": 1,
+        "maxQty": 2
+      }
+    ]
+  },
+  {
+    "id": "loot_floor_6_room",
+    "rolls": 1,
+    "entries": [
+      {
+        "itemId": "mat_tower_cloth",
+        "weight": 35,
+        "minQty": 1,
+        "maxQty": 3
+      },
+      {
+        "itemId": "consumable_small_potion",
+        "weight": 18,
+        "minQty": 1,
+        "maxQty": 2
+      },
+      {
+        "itemId": "weapon_hatchet",
+        "weight": 5,
+        "minQty": 1,
+        "maxQty": 1
+      }
+    ]
+  },
+  {
+    "id": "loot_floor_6_chest",
+    "rolls": 2,
+    "entries": [
+      {
+        "itemId": "weapon_hatchet",
+        "weight": 16,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "tool_grapple_hook",
+        "weight": 8,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "armor_worn_chest",
+        "weight": 10,
+        "minQty": 1,
+        "maxQty": 1
+      }
+    ]
+  }
+]

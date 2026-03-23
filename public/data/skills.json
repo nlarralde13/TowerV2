@@ -1,0 +1,50 @@
+[
+  {
+    "id": "skill_shield_bash",
+    "name": "Shield Bash",
+    "tree": "strength",
+    "kind": "active",
+    "unlockLevel": 5,
+    "cost": {
+      "stamina": 20,
+      "mana": 0
+    },
+    "cooldown": 8,
+    "effects": [
+      {
+        "type": "damage",
+        "value": 18
+      },
+      {
+        "type": "stun",
+        "duration": 1.2
+      }
+    ],
+    "targeting": {
+      "shape": "cone",
+      "range": 1
+    }
+  },
+  {
+    "id": "skill_quick_step",
+    "name": "Quick Step",
+    "tree": "dexterity",
+    "kind": "active",
+    "unlockLevel": 3,
+    "cost": {
+      "stamina": 12,
+      "mana": 0
+    },
+    "cooldown": 5,
+    "effects": [
+      {
+        "type": "dash",
+        "value": 3
+      }
+    ],
+    "targeting": {
+      "shape": "self",
+      "range": 0
+    }
+  }
+]

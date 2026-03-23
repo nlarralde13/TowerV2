@@ -1,0 +1,42 @@
+[
+  {
+    "id": "extract_rope_window",
+    "name": "Rope Window",
+    "floors": {
+      "min": 3,
+      "max": 30
+    },
+    "requirements": {
+      "itemsAny": [],
+      "itemsAll": ["tool_rope", "tool_grapple_hook"],
+      "minLevel": 1
+    },
+    "results": {
+      "success": "extract",
+      "consumeItems": ["tool_rope"]
+    },
+    "ui": {
+      "label": "Climb down through the broken tower window."
+    }
+  },
+  {
+    "id": "extract_stairwell",
+    "name": "Stairwell Retreat",
+    "floors": {
+      "min": 1,
+      "max": 99
+    },
+    "requirements": {
+      "itemsAny": [],
+      "itemsAll": [],
+      "minLevel": 1
+    },
+    "results": {
+      "success": "extract",
+      "consumeItems": []
+    },
+    "ui": {
+      "label": "Retreat through the unstable stairwell."
+    }
+  }
+]

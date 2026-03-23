@@ -1,0 +1,29 @@
+{
+  "baseStats": {
+    "level": 1,
+    "xp": 0,
+    "hp": 100,
+    "stamina": 50,
+    "attack": 10,
+    "defense": 5,
+    "speed": 1,
+    "carryWeight": 50
+  },
+  "equipment": {
+    "mainHand": "weapon_rusty_sword",
+    "offHand": null,
+    "helmet": null,
+    "chest": "armor_worn_chest",
+    "legs": null,
+    "feet": null
+  },
+  "inventory": {
+    "backpack": {
+      "w": 4,
+      "h": 3
+    },
+    "beltSlots": 3
+  },
+  "unlockedSkills": [],
+  "unlockedRecipes": []
+}

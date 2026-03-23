@@ -1,0 +1,58 @@
+[
+  {
+    "id": "floor_band_01",
+    "floorMin": 1,
+    "floorMax": 5,
+    "map": {
+      "width": 24,
+      "height": 24,
+      "roomCountMin": 6,
+      "roomCountMax": 10,
+      "puzzleChance": 0.12,
+      "secretChance": 0.03,
+      "extractionChance": 0.35
+    },
+    "spawns": {
+      "enemyPool": ["enemy_rat_small"],
+      "eliteChance": 0.03,
+      "bossChance": 0
+    },
+    "loot": {
+      "roomLootTableId": "loot_floor_1_room",
+      "chestLootTableId": "loot_floor_1_chest"
+    },
+    "gating": {
+      "recommendedLevel": 3,
+      "requiredLevel": 1
+    },
+    "xpMultiplier": 1
+  },
+  {
+    "id": "floor_band_02",
+    "floorMin": 6,
+    "floorMax": 10,
+    "map": {
+      "width": 28,
+      "height": 28,
+      "roomCountMin": 8,
+      "roomCountMax": 12,
+      "puzzleChance": 0.16,
+      "secretChance": 0.05,
+      "extractionChance": 0.4
+    },
+    "spawns": {
+      "enemyPool": ["enemy_rat_small"],
+      "eliteChance": 0.06,
+      "bossChance": 0.02
+    },
+    "loot": {
+      "roomLootTableId": "loot_floor_6_room",
+      "chestLootTableId": "loot_floor_6_chest"
+    },
+    "gating": {
+      "recommendedLevel": 8,
+      "requiredLevel": 5
+    },
+    "xpMultiplier": 1.2
+  }
+]

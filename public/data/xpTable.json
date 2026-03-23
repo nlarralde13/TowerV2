@@ -1,0 +1,25 @@
+{
+  "maxLevel": 99,
+  "levels": [
+    { "level": 1, "xpToNext": 100 },
+    { "level": 2, "xpToNext": 150 },
+    { "level": 3, "xpToNext": 220 },
+    { "level": 4, "xpToNext": 320 },
+    { "level": 5, "xpToNext": 450 },
+    { "level": 6, "xpToNext": 650 },
+    { "level": 7, "xpToNext": 900 },
+    { "level": 8, "xpToNext": 1200 },
+    { "level": 9, "xpToNext": 1600 },
+    { "level": 10, "xpToNext": 2100 }
+  ],
+  "runSources": {
+    "lootValueMultiplier": 0.5,
+    "floorReachedFlat": 100,
+    "bossKillFlat": 500,
+    "roomDiscoveredFlat": 10,
+    "puzzleSolvedFlat": 50,
+    "enemyKillFlat": 5,
+    "extractMultiplier": 1.25,
+    "deathMultiplier": 0.4
+  }
+}

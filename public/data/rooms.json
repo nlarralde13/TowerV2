@@ -1,0 +1,26 @@
+[
+  {
+    "id": "room_combat_basic",
+    "type": "combat",
+    "weight": 50,
+    "tags": ["early_floor"],
+    "allowedFloorMin": 1,
+    "allowedFloorMax": 99
+  },
+  {
+    "id": "room_loot_chest",
+    "type": "loot",
+    "weight": 20,
+    "tags": ["reward"],
+    "allowedFloorMin": 1,
+    "allowedFloorMax": 99
+  },
+  {
+    "id": "room_extraction",
+    "type": "extraction",
+    "weight": 8,
+    "tags": ["exit"],
+    "allowedFloorMin": 3,
+    "allowedFloorMax": 99
+  }
+]

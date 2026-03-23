@@ -1,0 +1,221 @@
+[
+  {
+    "id": "weapon_basic_sword",
+    "name": "Basic Sword",
+    "type": "weapon",
+    "subtype": "sword",
+    "rarity": "common",
+    "value": 20,
+    "weight": 4,
+    "gridSize": { "w": 1, "h": 3 },
+    "stackSize": 1,
+    "equipSlot": "mainHand",
+    "flavorText": "Pointy End awy from you",
+    "stats": {
+      "damageMin": 5,
+      "damageMax": 8,
+      "attackSpeed": 1,
+      "critChance": 0.03
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "melee"],
+    "render": { "icon": "weapon_basic_sword.png" }
+  },
+  {
+    "id": "weapon_rusty_sword",
+    "name": "Rusty Sword",
+    "type": "weapon",
+    "subtype": "sword",
+    "rarity": "common",
+    "value": 18,
+    "weight": 4,
+    "gridSize": { "w": 1, "h": 3 },
+    "stackSize": 1,
+    "equipSlot": "mainHand",
+    "stats": {
+      "damageMin": 4,
+      "damageMax": 7,
+      "attackSpeed": 1,
+      "critChance": 0.03
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "melee"],
+    "render": { "icon": "weapon_rusty_sword.png" }
+  },
+  {
+    "id": "weapon_hatchet",
+    "name": "Hatchet",
+    "type": "weapon",
+    "subtype": "axe",
+    "rarity": "common",
+    "value": 24,
+    "weight": 5,
+    "gridSize": { "w": 1, "h": 3 },
+    "stackSize": 1,
+    "equipSlot": "mainHand",
+    "stats": {
+      "damageMin": 6,
+      "damageMax": 9,
+      "attackSpeed": 0.85,
+      "critChance": 0.02
+    },
+    "requirements": { "level": 2 },
+    "tags": ["melee"],
+    "render": { "icon": "weapon_hatchet.png" }
+  },
+  {
+    "id": "armor_basic_headgear",
+    "name": "Basic Headgear",
+    "type": "armor",
+    "subtype": "helmet",
+    "rarity": "common",
+    "value": 14,
+    "weight": 2,
+    "gridSize": { "w": 2, "h": 1 },
+    "stackSize": 1,
+    "equipSlot": "helmet",
+    "flavorText": "It's leather and its better than nothing",
+    "stats": {
+      "defense": 1,
+      "resistance": 0
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "armor"],
+    "render": { "icon": "armor_basic_headgear.png" }
+  },
+  {
+    "id": "armor_basic_leggings",
+    "name": "Basic Leggings",
+    "type": "armor",
+    "subtype": "legs",
+    "rarity": "common",
+    "value": 16,
+    "weight": 3,
+    "gridSize": { "w": 2, "h": 2 },
+    "stackSize": 1,
+    "equipSlot": "legs",
+    "flavorText": "Leather and fabulous. Maybe you should practice some yoga",
+    "stats": {
+      "defense": 2,
+      "resistance": 0
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "armor"],
+    "render": { "icon": "armor_basic_leggings.png" }
+  },
+  {
+    "id": "armor_worn_chest",
+    "name": "Worn Chestguard",
+    "type": "armor",
+    "subtype": "chest",
+    "rarity": "common",
+    "value": 20,
+    "weight": 8,
+    "gridSize": { "w": 2, "h": 2 },
+    "stackSize": 1,
+    "equipSlot": "chest",
+    "stats": {
+      "defense": 3,
+      "resistance": 1
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter"],
+    "render": { "icon": "armor_worn_chest.png" }
+  },
+  {
+    "id": "consumable_small_potion",
+    "name": "Small Potion",
+    "type": "consumable",
+    "subtype": "potion",
+    "rarity": "common",
+    "value": 12,
+    "weight": 1,
+    "gridSize": { "w": 1, "h": 1 },
+    "stackSize": 5,
+    "tags": ["healing", "belt"],
+    "render": { "icon": "consumable_small_potion.png" }
+  },
+  {
+    "id": "mat_scrap_iron",
+    "name": "Scrap Iron",
+    "type": "material",
+    "subtype": "metal",
+    "rarity": "common",
+    "value": 6,
+    "weight": 1,
+    "gridSize": { "w": 1, "h": 1 },
+    "stackSize": 20,
+    "tags": ["crafting"],
+    "render": { "icon": "mat_scrap_iron.png" }
+  },
+  {
+    "id": "mat_tower_cloth",
+    "name": "Tower Cloth",
+    "type": "material",
+    "subtype": "cloth",
+    "rarity": "uncommon",
+    "value": 10,
+    "weight": 1,
+    "gridSize": { "w": 1, "h": 1 },
+    "stackSize": 20,
+    "tags": ["crafting"],
+    "render": { "icon": "mat_tower_cloth.png" }
+  },
+  {
+    "id": "trinket_lucky_charm",
+    "name": "Lucky Charm",
+    "type": "trinket",
+    "subtype": "belt_trinket",
+    "rarity": "uncommon",
+    "value": 30,
+    "weight": 1,
+    "gridSize": { "w": 1, "h": 1 },
+    "stackSize": 1,
+    "tags": ["belt_trinket", "loot"],
+    "render": { "icon": "trinket_lucky_charm.png" }
+  },
+  {
+    "id": "trinket_hp_gem",
+    "name": "HP GEM",
+    "type": "trinket",
+    "subtype": "belt_trinket",
+    "rarity": "common",
+    "value": 24,
+    "weight": 1,
+    "gridSize": { "w": 1, "h": 1 },
+    "stackSize": 1,
+    "flavorText": "Slottable in belt. +5 HP",
+    "stats": {
+      "hpBonus": 5
+    },
+    "requirements": { "level": 1 },
+    "tags": ["belt_trinket", "hp_bonus"],
+    "render": { "icon": "trinket_hp_gem.png" }
+  },
+  {
+    "id": "tool_rope",
+    "name": "Rope",
+    "type": "tool",
+    "subtype": "extraction",
+    "rarity": "common",
+    "value": 20,
+    "weight": 3,
+    "gridSize": { "w": 2, "h": 1 },
+    "stackSize": 1,
+    "tags": ["extraction"],
+    "render": { "icon": "tool_rope.png" }
+  },
+  {
+    "id": "tool_grapple_hook",
+    "name": "Grapple Hook",
+    "type": "tool",
+    "subtype": "extraction",
+    "rarity": "rare",
+    "value": 45,
+    "weight": 3,
+    "gridSize": { "w": 2, "h": 2 },
+    "stackSize": 1,
+    "tags": ["extraction"],
+    "render": { "icon": "tool_grapple_hook.png" }
+  }
+]

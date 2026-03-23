@@ -1,0 +1,352 @@
+:root {
+  --bg: #101a22;
+  --panel: #162530;
+  --panel-strong: #0e1a24;
+  --line: #2f4b5a;
+  --text: #d6e6ef;
+  --muted: #90a9b8;
+  --accent: #2fb86e;
+  --danger: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: radial-gradient(circle at top, #1f3a49 0%, var(--bg) 55%);
+  color: var(--text);
+  font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.shell {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.75rem;
+}
+
+.topbar p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem;
+}
+
+.play-area {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.game-panel {
+  width: 100%;
+  max-width: 960px;
+  min-height: 680px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.game-viewport-section {
+  height: clamp(280px, 34vh, 340px);
+  min-height: 280px;
+  max-height: 340px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0a131b;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.canvas-frame {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #060f17;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.game-canvas {
+  display: block;
+  border-radius: 6px;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.game-controls-row {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #10202b;
+  padding: 0.6rem;
+}
+
+.game-lower-section {
+  flex: 1 1 auto;
+  min-height: 220px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #12212c;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.viewport-placeholder {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.controls button,
+.panel button {
+  background: linear-gradient(180deg, #274558, #1b3444);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+}
+
+.controls button:hover,
+.panel button:hover {
+  border-color: #4c7a92;
+}
+
+.form-row {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.8rem;
+}
+
+.form-row input {
+  background: var(--panel-strong);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+}
+
+.message {
+  color: var(--muted);
+}
+
+.message.error {
+  color: var(--danger);
+}
+
+.summary h2 {
+  margin-top: 0;
+}
+
+.inventory-panel {
+  display: grid;
+  gap: 0.6rem;
+  background: #0f1e28;
+}
+
+.inventory-panel-header h3 {
+  margin: 0;
+}
+
+.inventory-panel-header p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.inventory-message {
+  margin: 0;
+  color: #fdba74;
+  font-size: 0.88rem;
+}
+
+.inventory-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.equipment-layout {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.equipment-column {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.belt-column {
+  min-width: 160px;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.belt-title {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--muted);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.belt-slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.35rem;
+}
+
+.equipment-slot-card,
+.belt-slot-card {
+  border: 1px solid var(--line);
+  background: #122432;
+  border-radius: 8px;
+  padding: 0.45rem 0.5rem;
+  min-height: 52px;
+  cursor: pointer;
+}
+
+.equipment-slot-card:hover,
+.belt-slot-card:hover {
+  border-color: #4c7a92;
+}
+
+.equipment-slot-label {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.equipment-slot-item {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.inventory-grid {
+  position: relative;
+  display: grid;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0a151d;
+  overflow: hidden;
+}
+
+.inventory-cell {
+  border: 1px solid #1d3442;
+  background: #0e1d27;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+}
+
+.inventory-cell:hover {
+  border-color: #3e5d71;
+}
+
+.inventory-item {
+  position: absolute;
+  border: 1px solid #60a5fa;
+  background: linear-gradient(180deg, #1e3a56, #152b42);
+  border-radius: 6px;
+  padding: 0.25rem 0.3rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: grab;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.7) inset;
+}
+
+.inventory-item.is-selected {
+  border-color: #fde68a;
+  box-shadow: 0 0 0 2px rgba(253, 230, 138, 0.25);
+}
+
+.inventory-item.is-dragging {
+  opacity: 0.7;
+}
+
+.inventory-item-name {
+  font-size: 0.72rem;
+  line-height: 1.1;
+  font-weight: 600;
+}
+
+.inventory-item-qty {
+  font-size: 0.72rem;
+  color: #dbeafe;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    padding: 1rem;
+  }
+
+  .topbar h1 {
+    font-size: 1.4rem;
+  }
+
+  .game-panel {
+    min-height: auto;
+  }
+
+  .game-viewport-section {
+    height: 280px;
+    max-height: none;
+  }
+
+  .game-lower-section {
+    min-height: 180px;
+  }
+
+  .equipment-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .belt-column {
+    min-width: 0;
+  }
+}
