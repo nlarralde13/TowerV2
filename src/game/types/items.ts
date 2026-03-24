@@ -14,12 +14,17 @@ export interface ItemTemplate {
   flavorText?: string;
   stats?: {
     hpBonus?: number;
+    attackBonus?: number;
+    defenseBonus?: number;
+    speedBonus?: number;
+    carryWeightBonus?: number;
     damageMin?: number;
     damageMax?: number;
     attackSpeed?: number;
     critChance?: number;
     defense?: number;
     resistance?: number;
+    torchFuelRestore?: number;
   };
   requirements?: {
     level?: number;

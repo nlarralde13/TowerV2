@@ -24,6 +24,15 @@
     },
     "beltSlots": 3
   },
+  "torch": {
+    "fuelMax": 120,
+    "fuelDrainPerTurn": 1,
+    "highFuelThreshold": 0.66,
+    "lowFuelThreshold": 0.33,
+    "revealRadiusHigh": 6,
+    "revealRadiusMedium": 4,
+    "revealRadiusLow": 2
+  },
   "unlockedSkills": [],
   "unlockedRecipes": []
 }

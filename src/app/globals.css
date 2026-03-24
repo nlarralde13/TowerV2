@@ -28,7 +28,7 @@ input {
 }
 
 .shell {
-  max-width: 1200px;
+  max-width: 1520px;
   margin: 0 auto;
   padding: 1.5rem;
   display: grid;
@@ -59,9 +59,32 @@ input {
 
 .game-panel {
   width: 100%;
-  max-width: 960px;
+  max-width: 1400px;
   min-height: 680px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.game-workspace {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(260px, 320px);
+  gap: 0.75rem;
+}
+
+.game-sidebar {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.game-center {
+  min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -88,6 +111,26 @@ input {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 0.75rem;
+}
+
+.torch-meter-row {
+  min-width: 220px;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.torch-meter {
+  width: 100%;
+  height: 10px;
+  border: 1px solid #6b4d2d;
+  border-radius: 999px;
+  background: #2a1d10;
+  overflow: hidden;
+}
+
+.torch-meter-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f97316, #fbbf24);
 }
 
 .canvas-frame {
@@ -123,15 +166,10 @@ input {
   padding: 0.6rem;
 }
 
-.game-lower-section {
+.game-end-layout {
   flex: 1 1 auto;
-  min-height: 220px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #12212c;
-  padding: 0.75rem;
-  display: flex;
-  flex-direction: column;
+  min-height: 0;
+  display: grid;
   gap: 0.75rem;
 }
 
@@ -181,10 +219,126 @@ input {
   margin-top: 0;
 }
 
+.action-log-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  background: #0f1c26;
+}
+
+.action-log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.action-log-header h3 {
+  margin: 0;
+}
+
+.action-log-list {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #0a151d;
+  height: calc(5 * 1.45rem + 0.9rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.action-log-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.log-filter-button {
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  padding: 0.3rem 0.55rem;
+  opacity: 0.8;
+}
+
+.log-filter-button.is-active {
+  border-color: #7dd3fc;
+  opacity: 1;
+}
+
+.action-log-entry {
+  display: block;
+  max-width: 100%;
+  min-height: 1.2rem;
+  font-size: 0.82rem;
+  line-height: 1.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #dbeafe;
+  border-bottom: 1px solid rgba(47, 75, 90, 0.35);
+  padding-bottom: 0.2rem;
+}
+
+.action-log-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .inventory-panel {
+  flex: 1 1 auto;
   display: grid;
   gap: 0.6rem;
   background: #0f1e28;
+  align-content: start;
+}
+
+.player-info-panel {
+  display: grid;
+  gap: 0.55rem;
+  background: #0f1e28;
+}
+
+.player-info-header h3 {
+  margin: 0;
+}
+
+.player-info-header p {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.player-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.55rem;
+  font-size: 0.85rem;
+}
+
+.player-stats-block h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.82rem;
+  color: #c7d2fe;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.player-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+.status-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .inventory-panel-header h3 {
@@ -201,6 +355,40 @@ input {
   margin: 0;
   color: #fdba74;
   font-size: 0.88rem;
+}
+
+.item-tooltip {
+  border: 1px solid #4c7a92;
+  background: linear-gradient(180deg, #132838, #0f1d2a);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  display: grid;
+  gap: 0.25rem;
+  max-width: 380px;
+  min-height: 110px;
+  opacity: 0.6;
+  transition: opacity 100ms ease;
+}
+
+.item-tooltip.is-visible {
+  opacity: 1;
+}
+
+.item-tooltip-name {
+  font-weight: 700;
+  color: #dbeafe;
+}
+
+.item-tooltip-stat {
+  font-size: 0.84rem;
+  color: #c7d2fe;
+}
+
+.item-tooltip-flavor {
+  margin-top: 0.2rem;
+  font-size: 0.82rem;
+  color: #a5b4fc;
+  font-style: italic;
 }
 
 .inventory-actions {
@@ -338,15 +526,29 @@ input {
     max-height: none;
   }
 
-  .game-lower-section {
-    min-height: 180px;
-  }
-
   .equipment-layout {
     grid-template-columns: 1fr;
   }
 
   .belt-column {
     min-width: 0;
+  }
+}
+
+@media (max-width: 1100px) {
+  .game-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .game-center {
+    order: 1;
+  }
+
+  .left-sidebar {
+    order: 2;
+  }
+
+  .right-sidebar {
+    order: 3;
   }
 }

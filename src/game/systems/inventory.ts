@@ -614,3 +614,40 @@ export function addItemToInventory(params: {
     },
   };
 }
+
+export function consumeInventoryItemStack(params: {
+  player: PlayerState;
+  instanceId: string;
+}): { player: PlayerState; consumed: boolean; consumedQuantity: number } {
+  const { player, instanceId } = params;
+  const inventoryItems = [...player.inventory.items];
+  const index = inventoryItems.findIndex(
+    (entry) => entry.instanceId === instanceId && entry.position.container === "inventory",
+  );
+  if (index < 0) {
+    return { player, consumed: false, consumedQuantity: 0 };
+  }
+
+  const target = inventoryItems[index];
+  const nextQuantity = target.quantity - 1;
+  if (nextQuantity <= 0) {
+    inventoryItems.splice(index, 1);
+  } else {
+    inventoryItems[index] = {
+      ...target,
+      quantity: nextQuantity,
+    };
+  }
+
+  return {
+    consumed: true,
+    consumedQuantity: 1,
+    player: {
+      ...player,
+      inventory: {
+        ...player.inventory,
+        items: inventoryItems,
+      },
+    },
+  };
+}

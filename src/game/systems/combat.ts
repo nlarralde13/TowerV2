@@ -1,6 +1,5 @@
 import type { EnemyInstance, EnemyTemplate, ItemTemplate, RunState, Vec2 } from "../types";
 import { createSeededRng, getForwardTile } from "../utils";
-import { computeEffectivePlayerStats } from "./playerStats";
 
 export interface AttackResult {
   run: RunState;
@@ -57,8 +56,7 @@ export function playerLightAttack(params: {
     return { run, attacked: false };
   }
 
-  const effectivePlayerStats = computeEffectivePlayerStats(run.player, itemTemplatesById);
-  const playerDamage = effectivePlayerStats.attack;
+  const playerDamage = run.player.totalStats.attack;
   const enemyDefense = enemyTemplate.tier === "elite" || enemyTemplate.tier === "boss" ? 3 : 1;
   const finalDamage = applyDamage(playerDamage, enemyDefense);
 
@@ -158,7 +156,6 @@ export function processEnemyTurn(params: {
     return { run };
   }
 
-  const effectivePlayerStats = computeEffectivePlayerStats(run.player, itemTemplatesById);
   let playerHp = run.player.vitals.hpCurrent;
 
   const updatedEnemies = floor.enemies.map((enemy) => {
@@ -183,7 +180,7 @@ export function processEnemyTurn(params: {
 
     const distance = manhattan(enemy.position, run.player.position);
     if (distance <= 1) {
-      const damage = applyDamage(template.stats.damage, effectivePlayerStats.defense);
+      const damage = applyDamage(template.stats.damage, run.player.totalStats.defense);
       playerHp = Math.max(0, playerHp - damage);
       return {
         ...enemy,

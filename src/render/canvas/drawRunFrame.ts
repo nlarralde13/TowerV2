@@ -1,4 +1,4 @@
-import type { FloorState, RunState, TileState } from "../../game/types";
+import type { FloorState, RunState, TileState, Vec2 } from "../../game/types";
 import { directionToUnitVector } from "../../game/utils";
 import {
   type CameraConfig,
@@ -9,6 +9,9 @@ import {
 export interface DrawOptions {
   tileSize: number;
   camera: CameraConfig;
+  playerRenderPosition?: Vec2;
+  destinationTile?: Vec2 | null;
+  pathPreviewTiles?: Vec2[];
 }
 
 function tileColor(roomType: FloorState["tiles"][number]["roomType"]): string {
@@ -60,8 +63,9 @@ export function drawRunFrame(
   }
 
   const { tileSize, camera } = options;
+  const playerPosition = options.playerRenderPosition ?? run.player.position;
   const cameraState = buildFollowCamera({
-    playerTile: run.player.position,
+    playerTile: playerPosition,
     mapTileWidth: floor.width,
     mapTileHeight: floor.height,
     config: camera,
@@ -105,6 +109,38 @@ export function drawRunFrame(
       context.fillStyle = "#fde68a";
       context.fillRect(screen.x + tileSize * 0.42, screen.y + tileSize * 0.1, tileSize * 0.16, tileSize * 0.16);
     }
+  }
+
+  if (options.pathPreviewTiles && options.pathPreviewTiles.length > 1) {
+    context.strokeStyle = "rgba(56, 189, 248, 0.9)";
+    context.lineWidth = Math.max(2, tileSize * 0.09);
+    context.beginPath();
+    for (let i = 0; i < options.pathPreviewTiles.length; i += 1) {
+      const tile = options.pathPreviewTiles[i];
+      const worldX = tile.x * tileSize + tileSize / 2;
+      const worldY = tile.y * tileSize + tileSize / 2;
+      const screen = worldToScreen(cameraState, worldX, worldY);
+      if (i === 0) {
+        context.moveTo(screen.x, screen.y);
+      } else {
+        context.lineTo(screen.x, screen.y);
+      }
+    }
+    context.stroke();
+  }
+
+  if (options.destinationTile) {
+    const destinationWorldX = options.destinationTile.x * tileSize;
+    const destinationWorldY = options.destinationTile.y * tileSize;
+    const destinationScreen = worldToScreen(cameraState, destinationWorldX, destinationWorldY);
+    context.strokeStyle = "#22d3ee";
+    context.lineWidth = Math.max(2, tileSize * 0.08);
+    context.strokeRect(
+      destinationScreen.x + tileSize * 0.1,
+      destinationScreen.y + tileSize * 0.1,
+      tileSize * 0.8,
+      tileSize * 0.8,
+    );
   }
 
   for (const enemy of floor.enemies) {
@@ -159,8 +195,8 @@ export function drawRunFrame(
   }
 
   // Player is rendered in world-space and appears near center when camera can follow.
-  const playerWorldX = run.player.position.x * tileSize + tileSize / 2;
-  const playerWorldY = run.player.position.y * tileSize + tileSize / 2;
+  const playerWorldX = playerPosition.x * tileSize + tileSize / 2;
+  const playerWorldY = playerPosition.y * tileSize + tileSize / 2;
   const playerScreen = worldToScreen(cameraState, playerWorldX, playerWorldY);
 
   context.fillStyle = "#22d3ee";

@@ -1,22 +1,70 @@
 import type { EnemyTemplate, FloorRule, PlayerDefaults, RunState, SeedString } from "../types";
 import { generateFloorState, selectFloorRuleForFloor, spawnEnemiesForFloor } from "../systems";
 
+function createEmptyStatSet(): RunState["player"]["baseStats"] {
+  return {
+    str: 0,
+    dex: 0,
+    vit: 0,
+    int: 0,
+    lck: 0,
+    hp: 0,
+    stamina: 0,
+    attack: 0,
+    defense: 0,
+    critChance: 0,
+    dodgeChance: 0,
+    hpRegen: 0,
+    staminaRegen: 0,
+    moveSpeed: 0,
+    magicFind: 0,
+    armor: 0,
+    carryWeight: 0,
+  };
+}
+
+function toLegacyStatBlock(totalStats: RunState["player"]["totalStats"]): RunState["player"]["stats"] {
+  return {
+    hp: totalStats.hp,
+    stamina: totalStats.stamina,
+    attack: totalStats.attack,
+    defense: totalStats.defense,
+    speed: totalStats.moveSpeed,
+    carryWeight: totalStats.carryWeight,
+  };
+}
+
 function buildPlayerDefaultsState(playerDefaults: PlayerDefaults): RunState["player"] {
+  const baseStats: RunState["player"]["baseStats"] = {
+    ...createEmptyStatSet(),
+    // Keep existing default balance values as source of truth for MVP.
+    hp: playerDefaults.baseStats.hp,
+    stamina: playerDefaults.baseStats.stamina,
+    attack: playerDefaults.baseStats.attack,
+    defense: playerDefaults.baseStats.defense,
+    moveSpeed: playerDefaults.baseStats.speed,
+    carryWeight: playerDefaults.baseStats.carryWeight,
+  };
+  const equipmentStats = createEmptyStatSet();
+  const buffStats = createEmptyStatSet();
+  const totalStats = {
+    ...baseStats,
+  };
+
   return {
     id: "player_1",
     name: "Tower Runner",
+    title: "The Climber",
     level: playerDefaults.baseStats.level,
     xp: playerDefaults.baseStats.xp,
+    gold: 0,
     unspentStatPoints: 0,
     unspentSkillPoints: 0,
-    stats: {
-      hp: playerDefaults.baseStats.hp,
-      stamina: playerDefaults.baseStats.stamina,
-      attack: playerDefaults.baseStats.attack,
-      defense: playerDefaults.baseStats.defense,
-      speed: playerDefaults.baseStats.speed,
-      carryWeight: playerDefaults.baseStats.carryWeight,
-    },
+    baseStats,
+    equipmentStats,
+    buffStats,
+    totalStats,
+    stats: toLegacyStatBlock(totalStats),
     vitals: {
       hpCurrent: playerDefaults.baseStats.hp,
       staminaCurrent: playerDefaults.baseStats.stamina,
@@ -38,6 +86,16 @@ function buildPlayerDefaultsState(playerDefaults: PlayerDefaults): RunState["pla
     },
     belt: {
       slots: Array.from({ length: playerDefaults.inventory.beltSlots }, () => null),
+    },
+    torch: {
+      fuelCurrent: playerDefaults.torch.fuelMax,
+      fuelMax: playerDefaults.torch.fuelMax,
+      fuelDrainPerTurn: playerDefaults.torch.fuelDrainPerTurn,
+      highFuelThreshold: playerDefaults.torch.highFuelThreshold,
+      lowFuelThreshold: playerDefaults.torch.lowFuelThreshold,
+      revealRadiusHigh: playerDefaults.torch.revealRadiusHigh,
+      revealRadiusMedium: playerDefaults.torch.revealRadiusMedium,
+      revealRadiusLow: playerDefaults.torch.revealRadiusLow,
     },
     unlockedSkillIds: [...playerDefaults.unlockedSkills],
     activeSkillIds: [],

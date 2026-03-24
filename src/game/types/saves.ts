@@ -21,6 +21,7 @@ export interface RunSave {
   player: {
     hp: number;
     stamina: number;
+    torchFuel: number;
     position: Vec2;
   };
   inventory: ItemInstance[];

@@ -26,6 +26,12 @@
         "weight": 25,
         "minQty": 1,
         "maxQty": 1
+      },
+      {
+        "itemId": "consumable_torch_oil",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
       }
     ]
   },
@@ -56,6 +62,12 @@
         "weight": 25,
         "minQty": 1,
         "maxQty": 1
+      },
+      {
+        "itemId": "consumable_torch_oil",
+        "weight": 25,
+        "minQty": 1,
+        "maxQty": 1
       }
     ]
   },
@@ -71,7 +83,13 @@
       },
       {
         "itemId": "consumable_small_potion",
-        "weight": 20,
+        "weight": 15,
+        "minQty": 1,
+        "maxQty": 1
+      },
+      {
+        "itemId": "consumable_torch_oil",
+        "weight": 15,
         "minQty": 1,
         "maxQty": 1
       },
@@ -149,7 +167,13 @@
       },
       {
         "itemId": "mat_tower_cloth",
-        "weight": 30,
+        "weight": 24,
+        "minQty": 1,
+        "maxQty": 2
+      },
+      {
+        "itemId": "consumable_torch_oil",
+        "weight": 6,
         "minQty": 1,
         "maxQty": 2
       }
@@ -167,7 +191,13 @@
       },
       {
         "itemId": "consumable_small_potion",
-        "weight": 18,
+        "weight": 12,
+        "minQty": 1,
+        "maxQty": 2
+      },
+      {
+        "itemId": "consumable_torch_oil",
+        "weight": 12,
         "minQty": 1,
         "maxQty": 2
       },

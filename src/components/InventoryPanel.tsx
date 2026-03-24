@@ -32,6 +32,10 @@ interface InventoryPanelProps {
   itemTemplates: ItemTemplate[];
 }
 
+interface HoveredItemInfo {
+  template: ItemTemplate;
+}
+
 function getInventoryItems(player: PlayerState): ItemInstance[] {
   return player.inventory.items.filter((item) => item.position.container === "inventory");
 }
@@ -43,9 +47,11 @@ export function InventoryPanel({ player, itemTemplates }: InventoryPanelProps) {
   const unequipSlot = useRunStore((state) => state.unequipSlot);
   const assignTrinketToBelt = useRunStore((state) => state.assignTrinketToBelt);
   const removeTrinketFromBelt = useRunStore((state) => state.removeTrinketFromBelt);
+  const consumeInventoryStack = useRunStore((state) => state.consumeInventoryStack);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
   const [draggingInstanceId, setDraggingInstanceId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [hoveredItem, setHoveredItem] = useState<HoveredItemInfo | null>(null);
 
   const templatesById = useMemo(() => new Map(itemTemplates.map((item) => [item.id, item])), [itemTemplates]);
   const inventoryItems = useMemo(() => getInventoryItems(player), [player]);
@@ -65,6 +71,46 @@ export function InventoryPanel({ player, itemTemplates }: InventoryPanelProps) {
       }
     }
     return null;
+  }
+
+  function buildTooltipLines(template: ItemTemplate): string[] {
+    const lines: string[] = [];
+    const minDamage = template.stats?.damageMin;
+    const maxDamage = template.stats?.damageMax;
+    if (typeof minDamage === "number" || typeof maxDamage === "number") {
+      lines.push(`${(minDamage ?? 0).toFixed(1)}-${(maxDamage ?? 0).toFixed(1)} Damage per swing`);
+      const derivedAtk = Math.max(0, Math.floor(((minDamage ?? 0) + (maxDamage ?? 0)) / 2));
+      if (derivedAtk > 0) {
+        lines.push(`+${derivedAtk} ATK`);
+      }
+    }
+    if (typeof template.stats?.defense === "number" && template.stats.defense !== 0) {
+      lines.push(`${template.stats.defense > 0 ? "+" : ""}${template.stats.defense} DEF`);
+    }
+    if (typeof template.stats?.attackBonus === "number" && template.stats.attackBonus !== 0) {
+      lines.push(`${template.stats.attackBonus > 0 ? "+" : ""}${template.stats.attackBonus} ATK`);
+    }
+    if (typeof template.stats?.defenseBonus === "number" && template.stats.defenseBonus !== 0) {
+      lines.push(`${template.stats.defenseBonus > 0 ? "+" : ""}${template.stats.defenseBonus} DEF`);
+    }
+    if (typeof template.stats?.hpBonus === "number" && template.stats.hpBonus !== 0) {
+      lines.push(`${template.stats.hpBonus > 0 ? "+" : ""}${template.stats.hpBonus} HP`);
+    }
+    if (typeof template.stats?.speedBonus === "number" && template.stats.speedBonus !== 0) {
+      lines.push(`${template.stats.speedBonus > 0 ? "+" : ""}${template.stats.speedBonus} Speed`);
+    }
+    if (typeof template.stats?.carryWeightBonus === "number" && template.stats.carryWeightBonus !== 0) {
+      lines.push(
+        `${template.stats.carryWeightBonus > 0 ? "+" : ""}${template.stats.carryWeightBonus} Carry Weight`,
+      );
+    }
+    if (typeof template.stats?.torchFuelRestore === "number" && template.stats.torchFuelRestore > 0) {
+      lines.push(`+${template.stats.torchFuelRestore} Torch Fuel`);
+    }
+    if (lines.length === 0) {
+      lines.push("No direct stat modifiers");
+    }
+    return lines;
   }
 
   function placeInstance(instanceId: string, x: number, y: number): void {
@@ -189,6 +235,26 @@ export function InventoryPanel({ player, itemTemplates }: InventoryPanelProps) {
             if (!selectedInstanceId) {
               return;
             }
+            consumeInventoryStack(selectedInstanceId);
+            setMessage(null);
+            const stillExists = useRunStore
+              .getState()
+              .run
+              ?.player.inventory.items.some((entry) => entry.instanceId === selectedInstanceId);
+            if (!stillExists) {
+              setSelectedInstanceId(null);
+            }
+          }}
+        >
+          Use Selected
+        </button>
+        <button
+          type="button"
+          disabled={!selectedInstanceId}
+          onClick={() => {
+            if (!selectedInstanceId) {
+              return;
+            }
             dropInventoryStack(selectedInstanceId);
             setSelectedInstanceId(null);
             setMessage(null);
@@ -200,6 +266,20 @@ export function InventoryPanel({ player, itemTemplates }: InventoryPanelProps) {
 
       {message && <p className="inventory-message">{message}</p>}
 
+      <aside className={`item-tooltip${hoveredItem ? " is-visible" : ""}`}>
+        <div className="item-tooltip-name">{hoveredItem?.template.name ?? "Hover an item"}</div>
+        {hoveredItem ? (
+          buildTooltipLines(hoveredItem.template).map((line) => (
+            <div key={line} className="item-tooltip-stat">
+              {line}
+            </div>
+          ))
+        ) : (
+          <div className="item-tooltip-stat">Item stats appear here.</div>
+        )}
+        <div className="item-tooltip-flavor">{hoveredItem?.template.flavorText ?? "Flavor text appears here."}</div>
+      </aside>
+
       <div className="equipment-layout">
         <div className="equipment-column">
           {LEFT_EQUIPMENT_SLOTS.map((slot) => {
@@ -209,7 +289,12 @@ export function InventoryPanel({ player, itemTemplates }: InventoryPanelProps) {
               <div
                 key={slot}
                 className="equipment-slot-card"
-                title={template?.flavorText ?? ""}
+                onMouseEnter={() => {
+                  if (template) {
+                    setHoveredItem({ template });
+                  }
+                }}
+                onMouseLeave={() => setHoveredItem(null)}
                 onClick={() => onEquipmentSlotInteract(slot)}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
@@ -243,7 +328,12 @@ export function InventoryPanel({ player, itemTemplates }: InventoryPanelProps) {
                 <div
                   key={index}
                   className="belt-slot-card"
-                  title={template?.flavorText ?? ""}
+                  onMouseEnter={() => {
+                    if (template) {
+                      setHoveredItem({ template });
+                    }
+                  }}
+                  onMouseLeave={() => setHoveredItem(null)}
                   onClick={() => onBeltSlotInteract(index)}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={(event) => {
@@ -277,7 +367,12 @@ export function InventoryPanel({ player, itemTemplates }: InventoryPanelProps) {
               <div
                 key={slot}
                 className="equipment-slot-card"
-                title={template?.flavorText ?? ""}
+                onMouseEnter={() => {
+                  if (template) {
+                    setHoveredItem({ template });
+                  }
+                }}
+                onMouseLeave={() => setHoveredItem(null)}
                 onClick={() => onEquipmentSlotInteract(slot)}
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
@@ -352,13 +447,14 @@ export function InventoryPanel({ player, itemTemplates }: InventoryPanelProps) {
             <div
               key={item.instanceId}
               className={`inventory-item${selected ? " is-selected" : ""}${dragging ? " is-dragging" : ""}`}
-              title={template.flavorText ?? ""}
               style={{
                 left: `${itemX * INVENTORY_TILE_SIZE}px`,
                 top: `${itemY * INVENTORY_TILE_SIZE}px`,
                 width: `${template.gridSize.w * INVENTORY_TILE_SIZE}px`,
                 height: `${template.gridSize.h * INVENTORY_TILE_SIZE}px`,
               }}
+              onMouseEnter={() => setHoveredItem({ template })}
+              onMouseLeave={() => setHoveredItem(null)}
               draggable
               onDragStart={(event) => {
                 setMessage(null);

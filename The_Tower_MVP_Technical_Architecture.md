@@ -216,3 +216,130 @@ The MVP is complete when a player can:
 | Save | Persistence |
 
 This structure allows the game to grow without needing a full rewrite.
+
+---
+
+## 13. Movement Architecture Evolution (Grid-Backed World, Continuous Controller)
+
+### 13.1 Movement Model Shift
+The movement model is evolving from rigid tile stepping to a smoother controller feel while preserving the grid as the world foundation.
+
+Key distinction:
+- **Tile-based world representation**: The world is authored and stored as grid tiles (layout, room metadata, interactables, spawn zones, fog metadata, pathing reference).
+- **Tile-based logic**: Some gameplay rules can remain tile-aware (pathfinding, room ownership, broad collision partitioning, procedural generation).
+- **Visual/player movement feel**: Player motion can be continuous/sub-tile and still run on top of a tile-backed simulation model.
+
+These three concerns do not need to be identical. The grid remains authoritative for world structure, while the controller layer evolves for better action feel.
+
+### 13.2 Target Architecture
+- **Grid-backed world** remains source of truth for environment and authored gameplay metadata.
+- **Continuous player controller** uses sub-tile/continuous position and velocity-style movement updates.
+- **Optional future continuous enemy controller** can be introduced per enemy archetype as needed.
+- **Tile-driven collision metadata with sub-tile checks**:
+  - Collision data remains tile-authored.
+  - Runtime movement performs sub-tile collision sampling against nearby tile metadata.
+- **Radius/proximity-based interactions** replace strict same-tile requirements for pickups, triggers, and interactables where appropriate.
+- **Fog-of-war reveal by player radius** becomes position/radius-driven from continuous coordinates (instead of only current tile identity).
+
+### 13.3 Phased Implementation Plan
+
+#### Phase 1: Feel Upgrade Without Core Rewrite
+- Keep existing logical tile occupancy model where needed.
+- Add smooth interpolation between tile positions for player presentation.
+- Preserve current movement rules and collision outcomes.
+- Objective: improve responsiveness and motion feel with minimal systemic change.
+
+#### Phase 2: Continuous Player Coordinates
+- Change player position from integer tile coordinates to sub-tile/continuous coordinates.
+- Keep tiles as the environmental data model and authoring backbone.
+- Update movement and collision to sample surrounding tiles from continuous position.
+- Update fog reveal to use player radius from continuous position.
+- Support smoother directional input and movement vectors.
+
+#### Phase 3: Continuous Combat/AI Interaction Layer
+- Add continuous enemy movement where it materially improves gameplay.
+- Migrate interaction checks to proximity/radius triggers.
+- Improve action combat support:
+  - chase behavior
+  - dodge space
+  - attack range handling
+  - smoother local navigation around obstacles
+
+---
+
+## 14. Systems Impact
+
+### 14.1 Player State / Coordinate System
+- Introduce continuous position (float world coordinates) for player controller.
+- Keep tile coordinate derivation as a helper for systems that still need tile indexing.
+- Store both:
+  - authoritative continuous position
+  - derived/queried tile coordinate as needed
+
+### 14.2 Collision Detection
+- Replace single-step tile gating with sub-step movement checks against tile collision metadata.
+- Use local neighborhood sampling (current tile and adjacent tiles) for collision resolution.
+- Preserve deterministic movement by fixed update order and stable collision rules.
+
+### 14.3 Fog of War
+- Reveal tiles by radius around continuous player position.
+- Tile reveal remains persisted as tile metadata (`visible` / `explored`), preserving existing map-state model.
+
+### 14.4 Interactions and Triggers
+- Shift from exact tile overlap toward proximity thresholds for:
+  - loot pickup
+  - extraction trigger
+  - interactable activation
+- Keep trigger ownership attached to tile metadata for authoring simplicity.
+
+### 14.5 Enemy AI and Pathing
+- Keep high-level pathfinding grid-based initially.
+- Convert path outputs (tile paths) into continuous steering/intent at runtime as needed.
+- Allow mixed-mode enemies during migration (tile-stepped + continuous) behind feature flags or per-template config.
+
+### 14.6 Combat / Range Handling
+- Move attack validation toward distance/arc/range checks from continuous positions.
+- Preserve deterministic hit resolution by stable update ticks and explicit ordering.
+- Keep current discrete combat rules during early migration where risk is high.
+
+### 14.7 Rendering and Animation Alignment
+- Renderer consumes continuous transform for player (and later enemies).
+- Grid still drives floor drawing, fog cells, and authored interaction overlays.
+- Keep visual-to-collision alignment explicit to avoid art/collision drift.
+
+### 14.8 Save/Load Implications
+- Save format must include continuous coordinates and movement state required for deterministic restore.
+- Include migration handling from older tile-only saves.
+- Persist fog/interactable state in tile terms, preserving compatibility with existing world metadata.
+
+---
+
+## 15. What Stays the Same
+- Procedural generation remains tile-based.
+- Rooms and floor layout remain tile-based.
+- World metadata remains tile-based.
+- High-level pathfinding can remain grid-based.
+- Existing engine investment is preserved as much as possible.
+
+---
+
+## 16. Design Recommendations
+- Do **not** replace the engine wholesale.
+- Evolve the controller layer first and keep systems modular.
+- Preserve the grid as simulation and authoring structure.
+- Target **free-form movement feel** before attempting fully physics-driven movement.
+- Use phased rollout and mixed-mode support to reduce migration risk.
+
+---
+
+## 17. Risks and Tradeoffs
+- Collision complexity increases with continuous movement and sub-step checks.
+- Trigger detection must be redefined (tile overlap to proximity/radius semantics).
+- Movement feel requires tuning effort (acceleration, deceleration, turn response).
+- Art tile alignment and collision boundaries can diverge if not consistently authored and sampled.
+- AI and combat timing become more complex with mixed discrete/continuous actors.
+
+---
+
+## 18. Recommended Final Direction
+The game should keep the grid as the world model, while movement evolves toward a continuous controller to achieve a smoother ARPG-style feel without discarding the current engine foundation.

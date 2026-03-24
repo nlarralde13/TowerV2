@@ -10,7 +10,7 @@
     "gridSize": { "w": 1, "h": 3 },
     "stackSize": 1,
     "equipSlot": "mainHand",
-    "flavorText": "Pointy End awy from you",
+    "flavorText": "Pointy end towards bad guys!",
     "stats": {
       "damageMin": 5,
       "damageMax": 8,
@@ -132,8 +132,26 @@
     "weight": 1,
     "gridSize": { "w": 1, "h": 1 },
     "stackSize": 5,
+    "flavorText": "A basic tonic. Not useful for the torch.",
     "tags": ["healing", "belt"],
     "render": { "icon": "consumable_small_potion.png" }
+  },
+  {
+    "id": "consumable_torch_oil",
+    "name": "Torch Oil",
+    "type": "consumable",
+    "subtype": "fuel",
+    "rarity": "common",
+    "value": 10,
+    "weight": 1,
+    "gridSize": { "w": 1, "h": 1 },
+    "stackSize": 5,
+    "flavorText": "Refills your torch and buys you more time in the dark.",
+    "stats": {
+      "torchFuelRestore": 25
+    },
+    "tags": ["fuel", "torch"],
+    "render": { "icon": "consumable_torch_oil.png" }
   },
   {
     "id": "mat_scrap_iron",
@@ -171,6 +189,12 @@
     "weight": 1,
     "gridSize": { "w": 1, "h": 1 },
     "stackSize": 1,
+    "flavorText": "A polished trinket that makes hard runs feel a little easier.",
+    "stats": {
+      "attackBonus": 1,
+      "defenseBonus": 1,
+      "carryWeightBonus": 5
+    },
     "tags": ["belt_trinket", "loot"],
     "render": { "icon": "trinket_lucky_charm.png" }
   },

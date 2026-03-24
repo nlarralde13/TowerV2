@@ -4,8 +4,10 @@ const RUN_SAVE_KEY = "tower.mvp.runSave.v3";
 const RUN_SAVE_LEGACY_KEY = "tower.mvp.runSave.v1";
 const RUN_SAVE_V2_KEY = "tower.mvp.runSave.v2";
 const PROFILE_SAVE_KEY = "tower.mvp.profileSave.v1";
+const CURRENT_RUN_SAVE_VERSION = 3;
+const CURRENT_PROFILE_SAVE_VERSION = 1;
 
-interface RunStateSnapshot {
+export interface RunStateSnapshot {
   runId: string;
   seed: string;
   startedAt: number;
@@ -55,6 +57,232 @@ function parseJson<T>(raw: string | null): T | null {
   }
 }
 
+function createEmptyPlayerStatSet(): PlayerState["baseStats"] {
+  return {
+    str: 0,
+    dex: 0,
+    vit: 0,
+    int: 0,
+    lck: 0,
+    hp: 0,
+    stamina: 0,
+    attack: 0,
+    defense: 0,
+    critChance: 0,
+    dodgeChance: 0,
+    hpRegen: 0,
+    staminaRegen: 0,
+    moveSpeed: 0,
+    magicFind: 0,
+    armor: 0,
+    carryWeight: 0,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
+function isVec2(value: unknown): value is { x: number; y: number } {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return isFiniteNumber(value.x) && isFiniteNumber(value.y);
+}
+
+function isItemInstance(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (typeof value.instanceId !== "string" || typeof value.itemId !== "string" || !isFiniteNumber(value.quantity)) {
+    return false;
+  }
+  const position = value.position;
+  if (!isRecord(position) || typeof position.container !== "string") {
+    return false;
+  }
+  const container = position.container;
+  if (container !== "inventory" && container !== "equipment" && container !== "ground" && container !== "belt") {
+    return false;
+  }
+  if (container === "inventory" || container === "ground") {
+    return isFiniteNumber(position.x) && isFiniteNumber(position.y);
+  }
+  if (container === "equipment") {
+    return typeof position.slot === "string";
+  }
+  if (container === "belt") {
+    return isFiniteNumber(position.slotIndex);
+  }
+  return false;
+}
+
+function isItemInstanceArray(value: unknown): boolean {
+  return Array.isArray(value) && value.every((entry) => isItemInstance(entry));
+}
+
+function isPlayerStateSnapshot(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const inventory = value.inventory;
+  const equipment = value.equipment;
+  const belt = value.belt;
+  const torch = value.torch;
+  const stats = value.stats;
+  const vitals = value.vitals;
+
+  if (!isVec2(value.position) || typeof value.facing !== "string") {
+    return false;
+  }
+  if (!isRecord(stats) || !isRecord(vitals) || !isRecord(inventory) || !isRecord(equipment) || !isRecord(belt)) {
+    return false;
+  }
+  if (
+    !isFiniteNumber(stats.hp) ||
+    !isFiniteNumber(stats.stamina) ||
+    !isFiniteNumber(stats.attack) ||
+    !isFiniteNumber(stats.defense) ||
+    !isFiniteNumber(stats.speed) ||
+    !isFiniteNumber(stats.carryWeight)
+  ) {
+    return false;
+  }
+  if (!isFiniteNumber(vitals.hpCurrent) || !isFiniteNumber(vitals.staminaCurrent)) {
+    return false;
+  }
+  if (!isFiniteNumber(inventory.width) || !isFiniteNumber(inventory.height) || !isItemInstanceArray(inventory.items)) {
+    return false;
+  }
+
+  if (
+    !("mainHand" in equipment) ||
+    !("offHand" in equipment) ||
+    !("helmet" in equipment) ||
+    !("chest" in equipment) ||
+    !("legs" in equipment) ||
+    !("feet" in equipment)
+  ) {
+    return false;
+  }
+  const equipmentValues = [equipment.mainHand, equipment.offHand, equipment.helmet, equipment.chest, equipment.legs, equipment.feet];
+  if (!equipmentValues.every((entry) => entry === null || isItemInstance(entry))) {
+    return false;
+  }
+  if (!Array.isArray(belt.slots) || !belt.slots.every((entry) => entry === null || isItemInstance(entry))) {
+    return false;
+  }
+  if (typeof torch !== "undefined") {
+    if (
+      !isRecord(torch) ||
+      !isFiniteNumber(torch.fuelCurrent) ||
+      !isFiniteNumber(torch.fuelMax) ||
+      !isFiniteNumber(torch.fuelDrainPerTurn) ||
+      !isFiniteNumber(torch.highFuelThreshold) ||
+      !isFiniteNumber(torch.lowFuelThreshold) ||
+      !isFiniteNumber(torch.revealRadiusHigh) ||
+      !isFiniteNumber(torch.revealRadiusMedium) ||
+      !isFiniteNumber(torch.revealRadiusLow)
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isFloorStateSnapshot(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  const tiles = value.tiles;
+  const enemies = value.enemies;
+  const groundLoot = value.groundLoot;
+  if (!isFiniteNumber(value.floorNumber) || typeof value.seed !== "string") {
+    return false;
+  }
+  if (!isFiniteNumber(value.width) || !isFiniteNumber(value.height)) {
+    return false;
+  }
+  if (!Array.isArray(tiles) || !Array.isArray(enemies) || !isItemInstanceArray(groundLoot)) {
+    return false;
+  }
+  if (!isStringArray(value.extractionNodeIds) || !Array.isArray(value.discoveredRooms)) {
+    return false;
+  }
+  return true;
+}
+
+function isRunStateSnapshot(value: unknown): value is RunStateSnapshot {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (
+    typeof value.runId !== "string" ||
+    typeof value.seed !== "string" ||
+    !isFiniteNumber(value.startedAt) ||
+    !isFiniteNumber(value.currentFloor)
+  ) {
+    return false;
+  }
+  if (value.status !== "active" && value.status !== "extracted" && value.status !== "dead" && value.status !== "complete") {
+    return false;
+  }
+  if (!isPlayerStateSnapshot(value.player) || !isRecord(value.floors)) {
+    return false;
+  }
+  if (!Object.values(value.floors).every((floor) => isFloorStateSnapshot(floor))) {
+    return false;
+  }
+  if (
+    !isStringArray(value.discoveredTileKeys) ||
+    !isStringArray(value.defeatedEnemyIds) ||
+    !isStringArray(value.extractedItemIds) ||
+    !isStringArray(value.availableExtractionNodeIds)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function isRunSaveContract(value: unknown): value is RunSave {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (!isFiniteNumber(value.runVersion) || typeof value.seed !== "string" || !isFiniteNumber(value.floor)) {
+    return false;
+  }
+  if (!isRecord(value.player) || !isRecord(value.extractionState)) {
+    return false;
+  }
+  if (
+    !isFiniteNumber(value.player.hp) ||
+    !isFiniteNumber(value.player.stamina) ||
+    !isVec2(value.player.position)
+  ) {
+    return false;
+  }
+  if (typeof value.player.torchFuel !== "undefined" && !isFiniteNumber(value.player.torchFuel)) {
+    return false;
+  }
+  if (!isItemInstanceArray(value.inventory) || !isStringArray(value.exploredTiles) || !isItemInstanceArray(value.groundLoot)) {
+    return false;
+  }
+  if (!isStringArray(value.defeatedEnemies) || !isRecord(value.equipped) || !isStringArray(value.extractionState.availableNodeIds)) {
+    return false;
+  }
+  return true;
+}
+
 function normalizePlayerEquipment(player: PlayerState): PlayerState {
   const equipment = (player as PlayerState & { equipment?: Record<string, unknown> }).equipment ?? {};
   const nextEquipment = {
@@ -72,13 +300,65 @@ function normalizePlayerEquipment(player: PlayerState): PlayerState {
     normalizedBeltSlots.push(null);
   }
 
+  const torchRow = (player as PlayerState & { torch?: Partial<PlayerState["torch"]> }).torch;
+  const fallbackFuelMax = Math.max(1, torchRow?.fuelMax ?? 120);
+  const normalizedTorch: PlayerState["torch"] = {
+    fuelCurrent: Math.max(0, Math.min(fallbackFuelMax, torchRow?.fuelCurrent ?? fallbackFuelMax)),
+    fuelMax: fallbackFuelMax,
+    fuelDrainPerTurn: Math.max(0.01, torchRow?.fuelDrainPerTurn ?? 1),
+    highFuelThreshold: Math.min(1, Math.max(0, torchRow?.highFuelThreshold ?? 0.66)),
+    lowFuelThreshold: Math.min(1, Math.max(0, torchRow?.lowFuelThreshold ?? 0.33)),
+    revealRadiusHigh: Math.max(1, Math.floor(torchRow?.revealRadiusHigh ?? 6)),
+    revealRadiusMedium: Math.max(1, Math.floor(torchRow?.revealRadiusMedium ?? 4)),
+    revealRadiusLow: Math.max(1, Math.floor(torchRow?.revealRadiusLow ?? 2)),
+  };
+
+  const legacyStats = player.stats ?? {
+    hp: 100,
+    stamina: 50,
+    attack: 10,
+    defense: 5,
+    speed: 1,
+    carryWeight: 50,
+  };
+  const fallbackBaseStats: PlayerState["baseStats"] = {
+    ...createEmptyPlayerStatSet(),
+    hp: legacyStats.hp,
+    stamina: legacyStats.stamina,
+    attack: legacyStats.attack,
+    defense: legacyStats.defense,
+    moveSpeed: legacyStats.speed,
+    carryWeight: legacyStats.carryWeight,
+  };
+  const normalizedBaseStats = player.baseStats ?? fallbackBaseStats;
+  const normalizedEquipmentStats = player.equipmentStats ?? createEmptyPlayerStatSet();
+  const normalizedBuffStats = player.buffStats ?? createEmptyPlayerStatSet();
+  const normalizedTotalStats = player.totalStats ?? {
+    ...normalizedBaseStats,
+  };
+
   return {
     ...player,
+    title: player.title ?? "The Climber",
+    gold: typeof player.gold === "number" ? player.gold : 0,
+    baseStats: normalizedBaseStats,
+    equipmentStats: normalizedEquipmentStats,
+    buffStats: normalizedBuffStats,
+    totalStats: normalizedTotalStats,
+    stats: {
+      hp: normalizedTotalStats.hp,
+      stamina: normalizedTotalStats.stamina,
+      attack: normalizedTotalStats.attack,
+      defense: normalizedTotalStats.defense,
+      speed: normalizedTotalStats.moveSpeed,
+      carryWeight: normalizedTotalStats.carryWeight,
+    },
     equipment: nextEquipment,
     belt: {
       ...player.belt,
       slots: normalizedBeltSlots,
     },
+    torch: normalizedTorch,
   };
 }
 
@@ -101,6 +381,7 @@ export function mapRunStateToRunSave(run: RunState): RunSave {
     player: {
       hp: run.player.vitals.hpCurrent,
       stamina: run.player.vitals.staminaCurrent,
+      torchFuel: run.player.torch.fuelCurrent,
       position: run.player.position,
     },
     inventory: run.player.inventory.items,
@@ -156,7 +437,7 @@ function isRunEnvelopeV2(value: unknown): value is PersistedRunEnvelopeV2 {
     return false;
   }
   const row = value as Partial<PersistedRunEnvelopeV2>;
-  return row.version === 2 && Boolean(row.snapshot) && Boolean(row.runSave);
+  return row.version === 2 && isRunStateSnapshot(row.snapshot) && isRunSaveContract(row.runSave);
 }
 
 function isRunEnvelopeV3(value: unknown): value is PersistedRunEnvelopeV3 {
@@ -164,7 +445,7 @@ function isRunEnvelopeV3(value: unknown): value is PersistedRunEnvelopeV3 {
     return false;
   }
   const row = value as Partial<PersistedRunEnvelopeV3>;
-  return row.version === 3 && Boolean(row.snapshot) && Boolean(row.runSave);
+  return row.version === 3 && isRunStateSnapshot(row.snapshot) && isRunSaveContract(row.runSave);
 }
 
 function isRunEnvelopeV1Legacy(value: unknown): value is PersistedRunEnvelopeV1Legacy {
@@ -172,7 +453,43 @@ function isRunEnvelopeV1Legacy(value: unknown): value is PersistedRunEnvelopeV1L
     return false;
   }
   const row = value as Partial<PersistedRunEnvelopeV1Legacy>;
-  return row.version === 1 && Boolean(row.run);
+  return row.version === 1 && isRunStateSnapshot(row.run);
+}
+
+function isUnsupportedFutureRunEnvelope(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (!isFiniteNumber(value.version)) {
+    return false;
+  }
+  return value.version > CURRENT_RUN_SAVE_VERSION;
+}
+
+function isProfileSaveV1(value: unknown): value is ProfileSave {
+  if (!isRecord(value) || value.profileVersion !== CURRENT_PROFILE_SAVE_VERSION) {
+    return false;
+  }
+  if (!isRecord(value.player) || !isRecord(value.player.stats) || !isRecord(value.unlocks)) {
+    return false;
+  }
+  if (!isFiniteNumber(value.player.level) || !isFiniteNumber(value.player.xp)) {
+    return false;
+  }
+  if (
+    !isFiniteNumber(value.player.stats.hp) ||
+    !isFiniteNumber(value.player.stats.stamina) ||
+    !isFiniteNumber(value.player.stats.attack) ||
+    !isFiniteNumber(value.player.stats.defense) ||
+    !isFiniteNumber(value.player.stats.speed) ||
+    !isFiniteNumber(value.player.stats.carryWeight)
+  ) {
+    return false;
+  }
+  if (!isStringArray(value.unlocks.skills) || !isStringArray(value.unlocks.recipes)) {
+    return false;
+  }
+  return true;
 }
 
 export function saveRunState(run: RunState): void {
@@ -193,9 +510,13 @@ export function loadRunState(): RunState | null {
     return null;
   }
 
-  const v2 = parseJson<unknown>(window.localStorage.getItem(RUN_SAVE_KEY));
-  if (isRunEnvelopeV3(v2)) {
-    return mapSnapshotToRunState(v2.snapshot);
+  const v3 = parseJson<unknown>(window.localStorage.getItem(RUN_SAVE_KEY));
+  if (isRunEnvelopeV3(v3)) {
+    return mapSnapshotToRunState(v3.snapshot);
+  }
+  if (isUnsupportedFutureRunEnvelope(v3)) {
+    window.localStorage.removeItem(RUN_SAVE_KEY);
+    return null;
   }
 
   const v2Legacy = parseJson<unknown>(window.localStorage.getItem(RUN_SAVE_V2_KEY));
@@ -209,9 +530,10 @@ export function loadRunState(): RunState | null {
   // Migration path from older v1 direct RunState blob.
   const legacy = parseJson<unknown>(window.localStorage.getItem(RUN_SAVE_LEGACY_KEY));
   if (isRunEnvelopeV1Legacy(legacy)) {
-    saveRunState(legacy.run);
+    const migrated = mapSnapshotToRunState(legacy.run);
+    saveRunState(migrated);
     window.localStorage.removeItem(RUN_SAVE_LEGACY_KEY);
-    return legacy.run;
+    return migrated;
   }
 
   return null;
@@ -259,8 +581,8 @@ export function loadProfile(playerDefaults: PlayerDefaults): ProfileSave {
   if (!hasStorage()) {
     return createProfileFromDefaults(playerDefaults);
   }
-  const existing = parseJson<ProfileSave>(window.localStorage.getItem(PROFILE_SAVE_KEY));
-  if (!existing || typeof existing.profileVersion !== "number") {
+  const existing = parseJson<unknown>(window.localStorage.getItem(PROFILE_SAVE_KEY));
+  if (!isProfileSaveV1(existing)) {
     const created = createProfileFromDefaults(playerDefaults);
     saveProfile(created);
     return created;

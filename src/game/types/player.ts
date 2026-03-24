@@ -1,6 +1,26 @@
 import type { Direction, EquipSlot, ID, RuntimeVitals, Size2D, StatBlock, Vec2 } from "./common";
 import type { ItemInstance } from "./items";
 
+export interface PlayerStatSet {
+  str: number;
+  dex: number;
+  vit: number;
+  int: number;
+  lck: number;
+  hp: number;
+  stamina: number;
+  attack: number;
+  defense: number;
+  critChance: number;
+  dodgeChance: number;
+  hpRegen: number;
+  staminaRegen: number;
+  moveSpeed: number;
+  magicFind: number;
+  armor: number;
+  carryWeight: number;
+}
+
 export interface PlayerDefaults {
   baseStats: {
     level: number;
@@ -17,6 +37,7 @@ export interface PlayerDefaults {
     backpack: Size2D;
     beltSlots: number;
   };
+  torch: TorchConfig;
   unlockedSkills: ID[];
   unlockedRecipes: ID[];
 }
@@ -40,13 +61,34 @@ export interface BeltState {
   slots: Array<ItemInstance | null>;
 }
 
+export interface TorchConfig {
+  fuelMax: number;
+  fuelDrainPerTurn: number;
+  highFuelThreshold: number;
+  lowFuelThreshold: number;
+  revealRadiusHigh: number;
+  revealRadiusMedium: number;
+  revealRadiusLow: number;
+}
+
+export interface TorchState extends TorchConfig {
+  fuelCurrent: number;
+}
+
 export interface PlayerState {
   id: ID;
   name: string;
+  title: string;
   level: number;
   xp: number;
+  gold: number;
   unspentStatPoints: number;
   unspentSkillPoints: number;
+  baseStats: PlayerStatSet;
+  equipmentStats: PlayerStatSet;
+  buffStats: PlayerStatSet;
+  totalStats: PlayerStatSet;
+  // Legacy gameplay compatibility fields. Values must mirror totalStats.
   stats: StatBlock;
   vitals: RuntimeVitals;
   position: Vec2;
@@ -54,6 +96,7 @@ export interface PlayerState {
   inventory: InventoryGrid;
   equipment: EquipmentState;
   belt: BeltState;
+  torch: TorchState;
   unlockedSkillIds: ID[];
   activeSkillIds: ID[];
   statusEffects: string[];

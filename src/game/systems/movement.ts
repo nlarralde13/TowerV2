@@ -51,7 +51,7 @@ export function computeWeightState(
     sumItemWeight(equippedItems, itemTemplatesById) +
     sumItemWeight(beltItems, itemTemplatesById);
 
-  const maxWeight = Math.max(0.0001, player.stats.carryWeight);
+  const maxWeight = Math.max(0.0001, player.totalStats.carryWeight);
   const ratio = currentWeight / maxWeight;
 
   let speedMultiplier = 1;

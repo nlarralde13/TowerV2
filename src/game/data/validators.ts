@@ -175,6 +175,22 @@ export function validateItemsJson(input: unknown): ItemTemplate[] {
           typeof stats.hpBonus === "undefined"
             ? undefined
             : expectNumber(stats.hpBonus, `items[${index}].stats.hpBonus`),
+        attackBonus:
+          typeof stats.attackBonus === "undefined"
+            ? undefined
+            : expectNumber(stats.attackBonus, `items[${index}].stats.attackBonus`),
+        defenseBonus:
+          typeof stats.defenseBonus === "undefined"
+            ? undefined
+            : expectNumber(stats.defenseBonus, `items[${index}].stats.defenseBonus`),
+        speedBonus:
+          typeof stats.speedBonus === "undefined"
+            ? undefined
+            : expectNumber(stats.speedBonus, `items[${index}].stats.speedBonus`),
+        carryWeightBonus:
+          typeof stats.carryWeightBonus === "undefined"
+            ? undefined
+            : expectNumber(stats.carryWeightBonus, `items[${index}].stats.carryWeightBonus`),
         damageMin:
           typeof stats.damageMin === "undefined"
             ? undefined
@@ -199,6 +215,10 @@ export function validateItemsJson(input: unknown): ItemTemplate[] {
           typeof stats.resistance === "undefined"
             ? undefined
             : expectNumber(stats.resistance, `items[${index}].stats.resistance`),
+        torchFuelRestore:
+          typeof stats.torchFuelRestore === "undefined"
+            ? undefined
+            : expectNumber(stats.torchFuelRestore, `items[${index}].stats.torchFuelRestore`, { min: 0 }),
       };
     }
 
@@ -515,6 +535,7 @@ export function validatePlayerDefaultsJson(input: unknown): PlayerDefaults {
   const equipment = expectRecord(row.equipment, "playerDefaults.equipment");
   const inventory = expectRecord(row.inventory, "playerDefaults.inventory");
   const backpack = expectRecord(inventory.backpack, "playerDefaults.inventory.backpack");
+  const torch = expectRecord(row.torch, "playerDefaults.torch");
 
   const equipmentRecord = {} as Record<(typeof EQUIP_SLOTS)[number], string | null>;
   for (const slot of EQUIP_SLOTS) {
@@ -526,7 +547,7 @@ export function validatePlayerDefaultsJson(input: unknown): PlayerDefaults {
     equipmentRecord[slot] = expectString(slotValue, `playerDefaults.equipment.${slot}`);
   }
 
-  return {
+  const parsed: PlayerDefaults = {
     baseStats: {
       level: expectNumber(baseStats.level, "playerDefaults.baseStats.level", { integer: true, min: 1 }),
       xp: expectNumber(baseStats.xp, "playerDefaults.baseStats.xp", { integer: true, min: 0 }),
@@ -549,9 +570,45 @@ export function validatePlayerDefaultsJson(input: unknown): PlayerDefaults {
         max: 3,
       }),
     },
+    torch: {
+      fuelMax: expectNumber(torch.fuelMax, "playerDefaults.torch.fuelMax", { min: 1 }),
+      fuelDrainPerTurn: expectNumber(torch.fuelDrainPerTurn, "playerDefaults.torch.fuelDrainPerTurn", { min: 0.01 }),
+      highFuelThreshold: expectNumber(torch.highFuelThreshold, "playerDefaults.torch.highFuelThreshold", {
+        min: 0,
+        max: 1,
+      }),
+      lowFuelThreshold: expectNumber(torch.lowFuelThreshold, "playerDefaults.torch.lowFuelThreshold", {
+        min: 0,
+        max: 1,
+      }),
+      revealRadiusHigh: expectNumber(torch.revealRadiusHigh, "playerDefaults.torch.revealRadiusHigh", {
+        integer: true,
+        min: 1,
+      }),
+      revealRadiusMedium: expectNumber(torch.revealRadiusMedium, "playerDefaults.torch.revealRadiusMedium", {
+        integer: true,
+        min: 1,
+      }),
+      revealRadiusLow: expectNumber(torch.revealRadiusLow, "playerDefaults.torch.revealRadiusLow", {
+        integer: true,
+        min: 1,
+      }),
+    },
     unlockedSkills: expectStringArray(row.unlockedSkills, "playerDefaults.unlockedSkills"),
     unlockedRecipes: expectStringArray(row.unlockedRecipes, "playerDefaults.unlockedRecipes"),
   };
+
+  if (parsed.torch.lowFuelThreshold > parsed.torch.highFuelThreshold) {
+    throw new DataValidationError("playerDefaults.torch.lowFuelThreshold cannot exceed highFuelThreshold");
+  }
+  if (
+    parsed.torch.revealRadiusLow > parsed.torch.revealRadiusMedium ||
+    parsed.torch.revealRadiusMedium > parsed.torch.revealRadiusHigh
+  ) {
+    throw new DataValidationError("playerDefaults.torch reveal radii must be ordered low <= medium <= high");
+  }
+
+  return parsed;
 }
 
 export function validateRoomsJson(input: unknown): RoomTemplate[] {
