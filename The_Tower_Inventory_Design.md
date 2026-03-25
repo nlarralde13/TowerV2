@@ -131,17 +131,19 @@ Equipped items do NOT take backpack space.
 
 ## 8. Belt Trinket Slots
 
-The belt has a fixed 3-slot trinket row (displayed between left/right equipment groupings in the UI).
-These slots are for belt-only trinkets that add passive or triggered modifiers.
+The belt is a dedicated **perk/build customization system**, not a consumable quickbar.
+It has a fixed 3-slot trinket row (displayed between left/right equipment groupings in the UI).
 
 | Belt Config | Slots |
 |-----------|------|
 | MVP Fixed | 3 |
 
-Items allowed in belt trinket slots:
-- Belt trinkets only
-- Trinkets can modify core loop behavior (combat, loot, movement, extraction hooks)
-- Consumable quickbar behavior is out of scope for this belt row in MVP
+Rules:
+- **Trinket-type items only** — no weapons, armor, materials, or consumables
+- Each trinket provides a **passive or triggered perk** that modifies the core gameplay loop
+- Trinket perks can affect combat, loot, movement, extraction, or stat bonuses
+- The belt slots persist between floors within a run and are kept on successful extraction
+- Consumable quickbar functionality is explicitly **out of scope** — potions and torch oil are managed directly from the backpack grid
 
 ---
 
@@ -234,7 +236,7 @@ For MVP, implement:
 |---------|-------|
 | Better backpack | More space |
 | Strength stat | More carry weight |
-| Better trinkets | Build customization and run-shaping effects |
+| Better trinkets | Passive/triggered perks that shape the run — combat, loot, movement, or extraction bonuses |
 | Skill perk | Reduced item weight |
 | Relic | Special inventory bonus |
 

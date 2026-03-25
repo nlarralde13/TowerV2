@@ -1,5 +1,6 @@
 import type { EnemyInstance, EnemyTemplate, ItemTemplate, RunState, Vec2 } from "../types";
 import { createSeededRng, getForwardTile } from "../utils";
+import { getTile, inBounds } from "../world";
 
 export interface AttackResult {
   run: RunState;
@@ -94,14 +95,35 @@ export function playerLightAttack(params: {
   };
 }
 
-function tryEnemyStepTowardsPlayer(enemy: EnemyInstance, playerPosition: Vec2): Vec2 {
+function tryEnemyStepTowardsPlayer(
+  enemy: EnemyInstance,
+  playerPosition: Vec2,
+  isWalkable: (x: number, y: number) => boolean,
+): Vec2 {
   const dx = playerPosition.x - enemy.position.x;
   const dy = playerPosition.y - enemy.position.y;
+  const primaryHorizontal = Math.abs(dx) >= Math.abs(dy);
 
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    return { x: enemy.position.x + sign(dx), y: enemy.position.y };
+  const primaryStep: Vec2 = primaryHorizontal
+    ? { x: enemy.position.x + sign(dx), y: enemy.position.y }
+    : { x: enemy.position.x, y: enemy.position.y + sign(dy) };
+
+  if (isWalkable(primaryStep.x, primaryStep.y)) {
+    return primaryStep;
   }
-  return { x: enemy.position.x, y: enemy.position.y + sign(dy) };
+
+  // Primary axis is blocked — try the secondary axis if the player isn't perfectly aligned
+  const secondaryDelta = primaryHorizontal ? dy : dx;
+  if (secondaryDelta !== 0) {
+    const secondaryStep: Vec2 = primaryHorizontal
+      ? { x: enemy.position.x, y: enemy.position.y + sign(dy) }
+      : { x: enemy.position.x + sign(dx), y: enemy.position.y };
+    if (isWalkable(secondaryStep.x, secondaryStep.y)) {
+      return secondaryStep;
+    }
+  }
+
+  return enemy.position;
 }
 
 function chebyshevDistance(a: Vec2, b: Vec2): number {
@@ -174,8 +196,8 @@ export function processEnemyTurn(params: {
         .map((other) => `${other.position.x},${other.position.y}`),
     );
     const isWalkable = (x: number, y: number): boolean => {
-      const tile = floor.tiles.find((entry) => entry.x === x && entry.y === y);
-      return Boolean(tile?.walkable);
+      if (!inBounds(x, y, floor.width, floor.height)) return false;
+      return Boolean(getTile(floor.tiles, floor.width, x, y)?.walkable);
     };
 
     const distance = manhattan(enemy.position, run.player.position);
@@ -189,19 +211,17 @@ export function processEnemyTurn(params: {
       };
     }
 
-    const shouldChase = template.role === "chaser";
-    const canPursueAsTethered = distance <= 2;
-    let nextPosition =
-      shouldChase || canPursueAsTethered
-        ? tryEnemyStepTowardsPlayer(enemy, run.player.position)
-        : tryTetheredWander({
-            enemy,
-            runSeed: run.seed,
-            floorNumber: run.currentFloor,
-            occupied: occupiedByOtherEnemies,
-            isWalkable,
-            playerPosition: run.player.position,
-          });
+    const shouldChase = template.role === "chaser" || enemy.state === "aggro" || enemy.state === "attacking";
+    let nextPosition = shouldChase
+      ? tryEnemyStepTowardsPlayer(enemy, run.player.position, isWalkable)
+      : tryTetheredWander({
+          enemy,
+          runSeed: run.seed,
+          floorNumber: run.currentFloor,
+          occupied: occupiedByOtherEnemies,
+          isWalkable,
+          playerPosition: run.player.position,
+        });
     if (!shouldChase && chebyshevDistance(nextPosition, enemy.spawnAnchor) > 1) {
       nextPosition = enemy.position;
     }
@@ -222,7 +242,7 @@ export function processEnemyTurn(params: {
       };
     }
 
-    const tile = floor.tiles.find((entry) => entry.x === nextPosition.x && entry.y === nextPosition.y);
+    const tile = getTile(floor.tiles, floor.width, nextPosition.x, nextPosition.y);
     if (!tile || !tile.walkable) {
       return {
         ...enemy,

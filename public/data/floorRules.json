@@ -13,7 +13,7 @@
       "extractionChance": 0.35
     },
     "spawns": {
-      "enemyPool": ["enemy_rat_small"],
+      "enemyPool": ["enemy_rat_small", "enemy_skeleton_basic"],
       "eliteChance": 0.03,
       "bossChance": 0
     },
@@ -41,7 +41,7 @@
       "extractionChance": 0.4
     },
     "spawns": {
-      "enemyPool": ["enemy_rat_small"],
+      "enemyPool": ["enemy_skeleton_basic", "enemy_archer_broken"],
       "eliteChance": 0.06,
       "bossChance": 0.02
     },

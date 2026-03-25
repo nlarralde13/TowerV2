@@ -1,20 +1,5 @@
 import type { EquipSlot, ItemInstance, ItemTemplate, PlayerState, RunState } from "../types";
 
-function findStackTarget(
-  inventoryItems: ItemInstance[],
-  incoming: ItemInstance,
-  template: ItemTemplate,
-): ItemInstance | undefined {
-  if (template.stackSize <= 1) {
-    return undefined;
-  }
-  return inventoryItems.find(
-    (entry) =>
-      entry.itemId === incoming.itemId &&
-      entry.position.container === "inventory" &&
-      (entry.quantity ?? 0) < template.stackSize,
-  );
-}
 
 function canPlaceAtPosition(params: {
   inventoryItems: ItemInstance[];
@@ -44,11 +29,9 @@ function canPlaceAtPosition(params: {
     if (!occupiedTemplate) {
       continue;
     }
-    for (let iy = 0; iy < 1; iy += 1) {
-      for (let ix = 0; ix < occupiedTemplate.gridSize.w; ix += 1) {
-        for (let iy2 = 0; iy2 < occupiedTemplate.gridSize.h; iy2 += 1) {
-          occupied.add(`${px + ix},${py + iy2}`);
-        }
+    for (let ix = 0; ix < occupiedTemplate.gridSize.w; ix += 1) {
+      for (let iy = 0; iy < occupiedTemplate.gridSize.h; iy += 1) {
+        occupied.add(`${px + ix},${py + iy}`);
       }
     }
   }
@@ -569,11 +552,17 @@ export function addItemToInventory(params: {
   const inventoryItems = [...player.inventory.items];
   let remaining = item.quantity;
 
-  const stackTarget = findStackTarget(inventoryItems, item, template);
-  if (stackTarget) {
+  const stackTargetIndex = inventoryItems.findIndex(
+    (entry) =>
+      entry.itemId === item.itemId &&
+      entry.position.container === "inventory" &&
+      (entry.quantity ?? 0) < template.stackSize,
+  );
+  if (stackTargetIndex >= 0 && template.stackSize > 1) {
+    const stackTarget = inventoryItems[stackTargetIndex];
     const free = template.stackSize - stackTarget.quantity;
     const toTransfer = Math.min(free, remaining);
-    stackTarget.quantity += toTransfer;
+    inventoryItems[stackTargetIndex] = { ...stackTarget, quantity: stackTarget.quantity + toTransfer };
     remaining -= toTransfer;
   }
 
