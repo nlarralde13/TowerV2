@@ -1,4 +1,4 @@
-import type { FloorState, PlayerDefaults, PlayerState, ProfileSave, RunSave, RunState } from "../types";
+import { initializeRunTurnState, type FloorState, type PlayerDefaults, type PlayerState, type ProfileSave, type RunSave, type RunState } from "../types";
 
 const RUN_SAVE_KEY = "tower.mvp.runSave.v3";
 const RUN_SAVE_LEGACY_KEY = "tower.mvp.runSave.v1";
@@ -13,6 +13,7 @@ export interface RunStateSnapshot {
   startedAt: number;
   status: RunState["status"];
   currentFloor: number;
+  turnState?: unknown;
   player: PlayerState;
   floors: Record<number, FloorState>;
   discoveredTileKeys: string[];
@@ -72,7 +73,7 @@ function createEmptyPlayerStatSet(): PlayerState["baseStats"] {
     dodgeChance: 0,
     hpRegen: 0,
     staminaRegen: 0,
-    moveSpeed: 0,
+    movementFeet: 0,
     magicFind: 0,
     armor: 0,
     carryWeight: 0,
@@ -138,23 +139,12 @@ function isPlayerStateSnapshot(value: unknown): boolean {
   const equipment = value.equipment;
   const belt = value.belt;
   const torch = value.torch;
-  const stats = value.stats;
   const vitals = value.vitals;
 
   if (!isVec2(value.position) || typeof value.facing !== "string") {
     return false;
   }
-  if (!isRecord(stats) || !isRecord(vitals) || !isRecord(inventory) || !isRecord(equipment) || !isRecord(belt)) {
-    return false;
-  }
-  if (
-    !isFiniteNumber(stats.hp) ||
-    !isFiniteNumber(stats.stamina) ||
-    !isFiniteNumber(stats.attack) ||
-    !isFiniteNumber(stats.defense) ||
-    !isFiniteNumber(stats.speed) ||
-    !isFiniteNumber(stats.carryWeight)
-  ) {
+  if (!isRecord(vitals) || !isRecord(inventory) || !isRecord(equipment) || !isRecord(belt)) {
     return false;
   }
   if (!isFiniteNumber(vitals.hpCurrent) || !isFiniteNumber(vitals.staminaCurrent)) {
@@ -254,6 +244,62 @@ function isRunStateSnapshot(value: unknown): value is RunStateSnapshot {
   return true;
 }
 
+function isRunTurnStateSnapshot(value: unknown): value is RunState["turnState"] {
+  if (!isRecord(value)) {
+    return false;
+  }
+  if (!isFiniteNumber(value.roundNumber) || (value.phase !== "player" && value.phase !== "enemies")) {
+    return false;
+  }
+  if (!isRecord(value.player) || !isRecord(value.enemies)) {
+    return false;
+  }
+  if (
+    !isFiniteNumber(value.player.movementAllowanceTiles) ||
+    !isFiniteNumber(value.player.movementRemainingTiles) ||
+    typeof value.player.actionAvailable !== "boolean"
+  ) {
+    return false;
+  }
+  if (!Array.isArray(value.enemies.pendingEnemyIds) || !value.enemies.pendingEnemyIds.every((entry) => typeof entry === "string")) {
+    return false;
+  }
+  if (value.enemies.activeEnemyId !== null && typeof value.enemies.activeEnemyId !== "string") {
+    return false;
+  }
+  if (!isRecord(value.future)) {
+    return false;
+  }
+  if (!Array.isArray(value.future.initiativeOrder) || !value.future.initiativeOrder.every((entry) => typeof entry === "string")) {
+    return false;
+  }
+  if (value.future.currentActorId !== null && typeof value.future.currentActorId !== "string") {
+    return false;
+  }
+  if (!isRecord(value.future.actorBudgets)) {
+    return false;
+  }
+  for (const budget of Object.values(value.future.actorBudgets)) {
+    if (!isRecord(budget)) {
+      return false;
+    }
+    if (
+      !isFiniteNumber(budget.movementTilesRemaining) ||
+      !isFiniteNumber(budget.actionPointsRemaining) ||
+      !isFiniteNumber(budget.speed)
+    ) {
+      return false;
+    }
+  }
+  if (value.future.terrainCostProfileId !== null && typeof value.future.terrainCostProfileId !== "string") {
+    return false;
+  }
+  if (!Array.isArray(value.future.activeStatusEffectIds) || !value.future.activeStatusEffectIds.every((entry) => typeof entry === "string")) {
+    return false;
+  }
+  return true;
+}
+
 function isRunSaveContract(value: unknown): value is RunSave {
   if (!isRecord(value)) {
     return false;
@@ -270,6 +316,11 @@ function isRunSaveContract(value: unknown): value is RunSave {
     !isVec2(value.player.position)
   ) {
     return false;
+  }
+  // Backward-compatible optional field.
+  // Invalid turnState is tolerated; normalize from snapshot/player defaults on restore.
+  if (typeof value.turnState !== "undefined" && !isRunTurnStateSnapshot(value.turnState)) {
+    // noop
   }
   if (typeof value.player.torchFuel !== "undefined" && !isFiniteNumber(value.player.torchFuel)) {
     return false;
@@ -313,24 +364,7 @@ function normalizePlayerEquipment(player: PlayerState): PlayerState {
     revealRadiusLow: Math.max(1, Math.floor(torchRow?.revealRadiusLow ?? 2)),
   };
 
-  const legacyStats = player.stats ?? {
-    hp: 100,
-    stamina: 50,
-    attack: 10,
-    defense: 5,
-    speed: 1,
-    carryWeight: 50,
-  };
-  const fallbackBaseStats: PlayerState["baseStats"] = {
-    ...createEmptyPlayerStatSet(),
-    hp: legacyStats.hp,
-    stamina: legacyStats.stamina,
-    attack: legacyStats.attack,
-    defense: legacyStats.defense,
-    moveSpeed: legacyStats.speed,
-    carryWeight: legacyStats.carryWeight,
-  };
-  const normalizedBaseStats = player.baseStats ?? fallbackBaseStats;
+  const normalizedBaseStats = player.baseStats ?? createEmptyPlayerStatSet();
   const normalizedEquipmentStats = player.equipmentStats ?? createEmptyPlayerStatSet();
   const normalizedBuffStats = player.buffStats ?? createEmptyPlayerStatSet();
   const normalizedTotalStats = player.totalStats ?? {
@@ -345,20 +379,53 @@ function normalizePlayerEquipment(player: PlayerState): PlayerState {
     equipmentStats: normalizedEquipmentStats,
     buffStats: normalizedBuffStats,
     totalStats: normalizedTotalStats,
-    stats: {
-      hp: normalizedTotalStats.hp,
-      stamina: normalizedTotalStats.stamina,
-      attack: normalizedTotalStats.attack,
-      defense: normalizedTotalStats.defense,
-      speed: normalizedTotalStats.moveSpeed,
-      carryWeight: normalizedTotalStats.carryWeight,
-    },
     equipment: nextEquipment,
     belt: {
       ...player.belt,
       slots: normalizedBeltSlots,
     },
     torch: normalizedTorch,
+  };
+}
+
+function normalizeRunTurnState(
+  turnState: unknown,
+  player: PlayerState,
+): RunState["turnState"] {
+  const fallback = initializeRunTurnState(player);
+  if (!isRunTurnStateSnapshot(turnState)) {
+    return fallback;
+  }
+  const movementAllowanceTiles = Math.max(0, Math.floor(turnState.player.movementAllowanceTiles));
+  const movementRemainingTiles = Math.max(0, Math.min(movementAllowanceTiles, Math.floor(turnState.player.movementRemainingTiles)));
+  return {
+    roundNumber: Math.max(1, Math.floor(turnState.roundNumber)),
+    phase: turnState.phase,
+    player: {
+      movementAllowanceTiles,
+      movementRemainingTiles,
+      actionAvailable: turnState.player.actionAvailable,
+    },
+    enemies: {
+      pendingEnemyIds: turnState.enemies.pendingEnemyIds,
+      activeEnemyId: turnState.enemies.activeEnemyId,
+    },
+    future: {
+      initiativeOrder: turnState.future.initiativeOrder,
+      currentActorId: turnState.future.currentActorId,
+      actorBudgets: Object.fromEntries(
+        Object.entries(turnState.future.actorBudgets).map(([actorId, budget]) => [
+          actorId,
+          {
+            movementTilesRemaining: Math.max(0, Math.floor(budget.movementTilesRemaining)),
+            actionPointsRemaining: Math.max(0, Math.floor(budget.actionPointsRemaining)),
+            speed: Math.max(0, budget.speed),
+          },
+        ]),
+      ),
+      terrainCostProfileId: turnState.future.terrainCostProfileId,
+      activeStatusEffectIds: turnState.future.activeStatusEffectIds,
+    },
   };
 }
 
@@ -378,6 +445,7 @@ export function mapRunStateToRunSave(run: RunState): RunSave {
     runVersion: 3,
     seed: run.seed,
     floor: run.currentFloor,
+    turnState: run.turnState,
     player: {
       hp: run.player.vitals.hpCurrent,
       stamina: run.player.vitals.staminaCurrent,
@@ -403,6 +471,7 @@ export function mapRunStateToSnapshot(run: RunState): RunStateSnapshot {
     startedAt: run.startedAt,
     status: run.status,
     currentFloor: run.currentFloor,
+    turnState: run.turnState,
     player: run.player,
     floors: run.floors,
     discoveredTileKeys: run.discoveredTileKeys,
@@ -416,12 +485,14 @@ export function mapRunStateToSnapshot(run: RunState): RunStateSnapshot {
 // Explicit mapper: snapshot -> RunState.
 export function mapSnapshotToRunState(snapshot: RunStateSnapshot): RunState {
   const normalizedPlayer = normalizePlayerEquipment(snapshot.player);
+  const normalizedTurnState = normalizeRunTurnState(snapshot.turnState, normalizedPlayer);
   return {
     runId: snapshot.runId,
     seed: snapshot.seed,
     startedAt: snapshot.startedAt,
     status: snapshot.status,
     currentFloor: snapshot.currentFloor,
+    turnState: normalizedTurnState,
     player: normalizedPlayer,
     floors: snapshot.floors,
     discoveredTileKeys: snapshot.discoveredTileKeys,
@@ -559,7 +630,7 @@ function createProfileFromDefaults(playerDefaults: PlayerDefaults): ProfileSave 
         stamina: playerDefaults.baseStats.stamina,
         attack: playerDefaults.baseStats.attack,
         defense: playerDefaults.baseStats.defense,
-        speed: playerDefaults.baseStats.speed,
+        speed: playerDefaults.baseStats.movementFeet,
         carryWeight: playerDefaults.baseStats.carryWeight,
       },
     },
@@ -603,7 +674,12 @@ export function applyRunSummaryToProfile(params: {
       xp: profile.player.xp + xpEarned,
       level: Math.max(profile.player.level, run.player.level),
       stats: {
-        ...run.player.stats,
+        hp: run.player.totalStats.hp,
+        stamina: run.player.totalStats.stamina,
+        attack: run.player.totalStats.attack,
+        defense: run.player.totalStats.defense,
+        speed: run.player.totalStats.movementFeet,
+        carryWeight: run.player.totalStats.carryWeight,
       },
     },
     unlocks: {

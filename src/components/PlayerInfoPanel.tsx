@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { computeWeightState } from "../game/systems";
+import { computeMovementTilesPerTurn } from "../game/types";
 import type { ItemTemplate, PlayerState, XpTable } from "../game/types";
 
 interface PlayerInfoPanelProps {
@@ -73,7 +74,7 @@ export function PlayerInfoPanel({ player, itemTemplates, xpTable }: PlayerInfoPa
           <div>Dodge %: {percent(total.dodgeChance)}</div>
           <div>HP Regen: {total.hpRegen.toFixed(2)}</div>
           <div>Stamina Regen: {total.staminaRegen.toFixed(2)}</div>
-          <div>Move Speed: {total.moveSpeed.toFixed(2)}</div>
+          <div>Movement: {total.movementFeet.toFixed(0)} ft ({computeMovementTilesPerTurn(total.movementFeet)} tiles/turn)</div>
           <div>Magic Find: {percent(total.magicFind)}</div>
         </div>
       </div>

@@ -555,7 +555,10 @@ export function validatePlayerDefaultsJson(input: unknown): PlayerDefaults {
       stamina: expectNumber(baseStats.stamina, "playerDefaults.baseStats.stamina", { min: 0 }),
       attack: expectNumber(baseStats.attack, "playerDefaults.baseStats.attack"),
       defense: expectNumber(baseStats.defense, "playerDefaults.baseStats.defense"),
-      speed: expectNumber(baseStats.speed, "playerDefaults.baseStats.speed", { min: 0 }),
+      movementFeet:
+        typeof baseStats.movementFeet === "number"
+          ? expectNumber(baseStats.movementFeet, "playerDefaults.baseStats.movementFeet", { min: 0 })
+          : expectNumber(baseStats.speed, "playerDefaults.baseStats.speed", { min: 0 }),
       carryWeight: expectNumber(baseStats.carryWeight, "playerDefaults.baseStats.carryWeight", { min: 0 }),
     },
     equipment: equipmentRecord,

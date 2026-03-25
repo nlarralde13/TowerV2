@@ -17,7 +17,7 @@ This repository contains both the design documents and the MVP implementation.
 
 ## MVP Features
 - Procedural floors
-- Real-time combat
+- Unified turn-based tactical flow (exploration + combat share one turn engine)
 - Enemies
 - Loot and rarity
 - Grid inventory + weight
@@ -46,6 +46,19 @@ This repository contains both the design documents and the MVP implementation.
 - Non-chaser enemies use tether AI:
   - wander in a 3x3 around spawn
   - only pursue when player is within 2 tiles
+
+## Turn Economy Rules (Authoritative MVP)
+- `move 1 tile`: costs `movement` (1 tile)
+- `attack`: costs `action`
+- `loot pickup`: costs `action`
+- `open chest`: costs `action` (reserved for interactable implementation)
+- `open door`: costs `action` (reserved for interactable implementation)
+- `extract`: costs `full turn` (requires available action in player phase; consumes turn budget)
+- `consume item`: costs `action`
+- `equip/unequip`: `free action` (no action/movement cost, but player phase only)
+- `use key`: costs `action` (reserved for interactable implementation)
+
+Canonical table and helpers live in `src/game/systems/turnEconomy.ts`.
 
 ## Development Order
 1. Types

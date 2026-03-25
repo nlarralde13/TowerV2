@@ -13,7 +13,16 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "plugins": [{ "name": "next" }]
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": {
+      "@game/*":       ["src/game/*"],
+      "@store":        ["src/store/index.ts"],
+      "@store/*":      ["src/store/*"],
+      "@render":       ["src/render/index.ts"],
+      "@render/*":     ["src/render/*"],
+      "@components/*": ["src/components/*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

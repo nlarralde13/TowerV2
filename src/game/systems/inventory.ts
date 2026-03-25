@@ -640,3 +640,8 @@ export function consumeInventoryItemStack(params: {
     },
   };
 }
+
+export function isConsumableUseAction(template: ItemTemplate | null | undefined): boolean {
+  const restoreAmount = template?.stats?.torchFuelRestore ?? 0;
+  return Boolean(template && template.type === "consumable" && restoreAmount > 0);
+}

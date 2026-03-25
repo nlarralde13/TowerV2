@@ -54,11 +54,10 @@ export function findNextPathStep(params: {
         continue;
       }
       const tile = getTile(tiles, width, next.x, next.y);
-      const isGoal = next.x === goal.x && next.y === goal.y;
       if (!tile || !tile.walkable) {
         continue;
       }
-      if (!isGoal && tile.occupiedByEnemyId) {
+      if (tile.occupiedByEnemyId) {
         continue;
       }
 
@@ -127,11 +126,10 @@ export function findPath(params: {
         continue;
       }
       const tile = getTile(tiles, width, next.x, next.y);
-      const isGoal = next.x === goal.x && next.y === goal.y;
       if (!tile || !tile.walkable) {
         continue;
       }
-      if (!isGoal && tile.occupiedByEnemyId) {
+      if (tile.occupiedByEnemyId) {
         continue;
       }
       visited.add(nextKey);

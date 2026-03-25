@@ -11,6 +11,12 @@ export interface EnemyTurnResult {
   run: RunState;
 }
 
+interface EnemyPhaseActorPolicy {
+  attackRangeTiles: number;
+  aggroRangeTiles: number;
+  actionBudgetPerPhase: number;
+}
+
 function manhattan(a: Vec2, b: Vec2): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
@@ -130,6 +136,39 @@ function chebyshevDistance(a: Vec2, b: Vec2): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 }
 
+function getEnemyPhaseActorPolicy(template: EnemyTemplate): EnemyPhaseActorPolicy {
+  // MVP pacing: one meaningful action per enemy during enemy phase.
+  // Keep this centralized so speed/initiative systems can evolve later.
+  return {
+    attackRangeTiles: Math.max(1, Math.floor(template.stats.attackRange)),
+    aggroRangeTiles: Math.max(1, Math.floor(template.stats.aggroRange)),
+    actionBudgetPerPhase: 1,
+  };
+}
+
+function evaluateEnemyAggro(params: {
+  enemy: EnemyInstance;
+  template: EnemyTemplate;
+  playerPosition: Vec2;
+  playerId: string;
+  policy: EnemyPhaseActorPolicy;
+}): { aggroed: boolean; targetId: string | null } {
+  const { enemy, template, playerPosition, playerId, policy } = params;
+  const distance = manhattan(enemy.position, playerPosition);
+  const alreadyAggro = enemy.state === "aggro" || enemy.state === "attacking";
+  if (alreadyAggro) {
+    return { aggroed: true, targetId: playerId };
+  }
+  if (template.role === "chaser" && distance <= policy.aggroRangeTiles) {
+    return { aggroed: true, targetId: playerId };
+  }
+  return { aggroed: false, targetId: null };
+}
+
+function enemyCanAttackNow(enemy: EnemyInstance, playerPosition: Vec2, policy: EnemyPhaseActorPolicy): boolean {
+  return manhattan(enemy.position, playerPosition) <= policy.attackRangeTiles;
+}
+
 function tryTetheredWander(params: {
   enemy: EnemyInstance;
   runSeed: string;
@@ -170,94 +209,100 @@ function tryTetheredWander(params: {
 export function processEnemyTurn(params: {
   run: RunState;
   enemyTemplatesById: ReadonlyMap<string, EnemyTemplate>;
-  itemTemplatesById: ReadonlyMap<string, ItemTemplate>;
 }): EnemyTurnResult {
-  const { run, enemyTemplatesById, itemTemplatesById } = params;
+  const { run, enemyTemplatesById } = params;
   const floor = run.floors[run.currentFloor];
-  if (!floor) {
+  if (!floor || run.status !== "active" || run.turnState.phase !== "enemies") {
     return { run };
   }
 
   let playerHp = run.player.vitals.hpCurrent;
+  const occupiedByAliveEnemies = new Set(
+    floor.enemies.filter((enemy) => enemy.state !== "dead").map((enemy) => `${enemy.position.x},${enemy.position.y}`),
+  );
+  const updatedEnemies: EnemyInstance[] = [];
 
-  const updatedEnemies = floor.enemies.map((enemy) => {
+  for (const enemy of floor.enemies) {
     if (enemy.state === "dead") {
-      return enemy;
+      updatedEnemies.push(enemy);
+      continue;
     }
 
     const template = enemyTemplatesById.get(enemy.enemyId);
     if (!template) {
-      return enemy;
+      updatedEnemies.push(enemy);
+      continue;
     }
 
-    const occupiedByOtherEnemies = new Set(
-      floor.enemies
-        .filter((other) => other.instanceId !== enemy.instanceId && other.state !== "dead")
-        .map((other) => `${other.position.x},${other.position.y}`),
-    );
-    const isWalkable = (x: number, y: number): boolean => {
-      if (!inBounds(x, y, floor.width, floor.height)) return false;
-      return Boolean(getTile(floor.tiles, floor.width, x, y)?.walkable);
-    };
+    const policy = getEnemyPhaseActorPolicy(template);
+    let nextEnemy = enemy;
+    occupiedByAliveEnemies.delete(`${enemy.position.x},${enemy.position.y}`);
 
-    const distance = manhattan(enemy.position, run.player.position);
-    if (distance <= 1) {
-      const damage = applyDamage(template.stats.damage, run.player.totalStats.defense);
-      playerHp = Math.max(0, playerHp - damage);
-      return {
-        ...enemy,
-        state: "attacking" as EnemyState,
-        aggroTargetId: run.player.id,
+    for (let actionIndex = 0; actionIndex < policy.actionBudgetPerPhase; actionIndex += 1) {
+      const aggro = evaluateEnemyAggro({
+        enemy: nextEnemy,
+        template,
+        playerPosition: run.player.position,
+        playerId: run.player.id,
+        policy,
+      });
+      const isWalkable = (x: number, y: number): boolean => {
+        if (!inBounds(x, y, floor.width, floor.height)) return false;
+        const tile = getTile(floor.tiles, floor.width, x, y);
+        if (!tile?.walkable) return false;
+        if (run.player.position.x === x && run.player.position.y === y) return false;
+        return !occupiedByAliveEnemies.has(`${x},${y}`);
       };
-    }
 
-    const shouldChase = template.role === "chaser" || enemy.state === "aggro" || enemy.state === "attacking";
-    let nextPosition = shouldChase
-      ? tryEnemyStepTowardsPlayer(enemy, run.player.position, isWalkable)
-      : tryTetheredWander({
-          enemy,
+      if (enemyCanAttackNow(nextEnemy, run.player.position, policy)) {
+        const damage = applyDamage(template.stats.damage, run.player.totalStats.defense);
+        playerHp = Math.max(0, playerHp - damage);
+        nextEnemy = {
+          ...nextEnemy,
+          state: "attacking" as EnemyState,
+          aggroTargetId: run.player.id,
+        };
+        break;
+      }
+
+      if (!aggro.aggroed) {
+        const wanderPosition = tryTetheredWander({
+          enemy: nextEnemy,
           runSeed: run.seed,
           floorNumber: run.currentFloor,
-          occupied: occupiedByOtherEnemies,
+          occupied: occupiedByAliveEnemies,
           isWalkable,
           playerPosition: run.player.position,
         });
-    if (!shouldChase && chebyshevDistance(nextPosition, enemy.spawnAnchor) > 1) {
-      nextPosition = enemy.position;
-    }
-    const blockedByOtherEnemy = floor.enemies.some(
-      (other) =>
-        other.instanceId !== enemy.instanceId &&
-        other.state !== "dead" &&
-        other.position.x === nextPosition.x &&
-        other.position.y === nextPosition.y,
-    );
-    const blockedByPlayer = run.player.position.x === nextPosition.x && run.player.position.y === nextPosition.y;
+        nextEnemy =
+          wanderPosition.x === nextEnemy.position.x && wanderPosition.y === nextEnemy.position.y
+            ? { ...nextEnemy, state: "idle" as EnemyState, aggroTargetId: null }
+            : { ...nextEnemy, position: wanderPosition, state: "patrol" as EnemyState, aggroTargetId: null };
+        break;
+      }
 
-    if (blockedByOtherEnemy || blockedByPlayer) {
-      return {
-        ...enemy,
+      const chasePosition = tryEnemyStepTowardsPlayer(nextEnemy, run.player.position, isWalkable);
+      if (chasePosition.x === nextEnemy.position.x && chasePosition.y === nextEnemy.position.y) {
+        nextEnemy = {
+          ...nextEnemy,
+          state: "aggro" as EnemyState,
+          aggroTargetId: aggro.targetId,
+        };
+        break;
+      }
+      nextEnemy = {
+        ...nextEnemy,
+        position: chasePosition,
         state: "aggro" as EnemyState,
-        aggroTargetId: run.player.id,
+        aggroTargetId: aggro.targetId,
       };
-    }
-
-    const tile = getTile(floor.tiles, floor.width, nextPosition.x, nextPosition.y);
-    if (!tile || !tile.walkable) {
-      return {
-        ...enemy,
-        state: "aggro" as EnemyState,
-        aggroTargetId: run.player.id,
-      };
-    }
-
-    return {
-      ...enemy,
-      position: nextPosition,
-      state: "aggro" as EnemyState,
-      aggroTargetId: run.player.id,
     };
-  });
+
+    if (nextEnemy.state !== "dead") {
+      occupiedByAliveEnemies.add(`${nextEnemy.position.x},${nextEnemy.position.y}`);
+    }
+    updatedEnemies.push(nextEnemy);
+  }
 
   const playerDead = playerHp <= 0;
   return {

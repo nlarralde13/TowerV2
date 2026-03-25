@@ -1,12 +1,13 @@
-import type { EquipSlot, ID, SeedString, StatBlock, Vec2 } from "./common";
+import type { EquipSlot, ID, SeedString, Vec2 } from "./common";
 import type { ItemInstance } from "./items";
+import type { RunTurnState } from "./run";
 
 export interface ProfileSave {
   profileVersion: number;
   player: {
     level: number;
     xp: number;
-    stats: StatBlock;
+    stats: { hp: number; stamina: number; attack: number; defense: number; speed: number; carryWeight: number };
   };
   unlocks: {
     skills: ID[];
@@ -18,6 +19,7 @@ export interface RunSave {
   runVersion: number;
   seed: SeedString;
   floor: number;
+  turnState?: RunTurnState;
   player: {
     hp: number;
     stamina: number;

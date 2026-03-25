@@ -1,5 +1,5 @@
-import type { FloorState, RunState, TileState, Vec2 } from "../../game/types";
-import { directionToUnitVector } from "../../game/utils";
+import type { FloorState, RunState, TileState, Vec2 } from "@game/types";
+import { directionToUnitVector } from "@game/utils";
 import {
   type CameraConfig,
   buildFollowCamera,
@@ -12,6 +12,7 @@ export interface DrawOptions {
   playerRenderPosition?: Vec2;
   destinationTile?: Vec2 | null;
   pathPreviewTiles?: Vec2[];
+  destinationReachableThisTurn?: boolean;
 }
 
 function tileColor(roomType: FloorState["tiles"][number]["roomType"]): string {
@@ -112,7 +113,7 @@ export function drawRunFrame(
   }
 
   if (options.pathPreviewTiles && options.pathPreviewTiles.length > 1) {
-    context.strokeStyle = "rgba(56, 189, 248, 0.9)";
+    context.strokeStyle = options.destinationReachableThisTurn ? "rgba(59, 130, 246, 0.92)" : "rgba(239, 68, 68, 0.95)";
     context.lineWidth = Math.max(2, tileSize * 0.09);
     context.beginPath();
     for (let i = 0; i < options.pathPreviewTiles.length; i += 1) {
@@ -133,7 +134,7 @@ export function drawRunFrame(
     const destinationWorldX = options.destinationTile.x * tileSize;
     const destinationWorldY = options.destinationTile.y * tileSize;
     const destinationScreen = worldToScreen(cameraState, destinationWorldX, destinationWorldY);
-    context.strokeStyle = "#22d3ee";
+    context.strokeStyle = options.destinationReachableThisTurn ? "#3b82f6" : "#ef4444";
     context.lineWidth = Math.max(2, tileSize * 0.08);
     context.strokeRect(
       destinationScreen.x + tileSize * 0.1,

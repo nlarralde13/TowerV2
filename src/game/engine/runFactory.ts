@@ -1,4 +1,4 @@
-import type { EnemyTemplate, FloorRule, PlayerDefaults, RunState, SeedString } from "../types";
+import { initializeRunTurnState, type EnemyTemplate, type FloorRule, type PlayerDefaults, type RunState, type SeedString } from "../types";
 import { generateFloorState, selectFloorRuleForFloor, spawnEnemiesForFloor } from "../systems";
 
 function createEmptyStatSet(): RunState["player"]["baseStats"] {
@@ -16,21 +16,10 @@ function createEmptyStatSet(): RunState["player"]["baseStats"] {
     dodgeChance: 0,
     hpRegen: 0,
     staminaRegen: 0,
-    moveSpeed: 0,
+    movementFeet: 0,
     magicFind: 0,
     armor: 0,
     carryWeight: 0,
-  };
-}
-
-function toLegacyStatBlock(totalStats: RunState["player"]["totalStats"]): RunState["player"]["stats"] {
-  return {
-    hp: totalStats.hp,
-    stamina: totalStats.stamina,
-    attack: totalStats.attack,
-    defense: totalStats.defense,
-    speed: totalStats.moveSpeed,
-    carryWeight: totalStats.carryWeight,
   };
 }
 
@@ -42,7 +31,7 @@ function buildPlayerDefaultsState(playerDefaults: PlayerDefaults): RunState["pla
     stamina: playerDefaults.baseStats.stamina,
     attack: playerDefaults.baseStats.attack,
     defense: playerDefaults.baseStats.defense,
-    moveSpeed: playerDefaults.baseStats.speed,
+    movementFeet: playerDefaults.baseStats.movementFeet,
     carryWeight: playerDefaults.baseStats.carryWeight,
   };
   const equipmentStats = createEmptyStatSet();
@@ -64,7 +53,6 @@ function buildPlayerDefaultsState(playerDefaults: PlayerDefaults): RunState["pla
     equipmentStats,
     buffStats,
     totalStats,
-    stats: toLegacyStatBlock(totalStats),
     vitals: {
       hpCurrent: playerDefaults.baseStats.hp,
       staminaCurrent: playerDefaults.baseStats.stamina,
@@ -136,6 +124,7 @@ export function createInitialRunState(params: {
     startedAt: Date.now(),
     status: "active",
     currentFloor: initialFloorNumber,
+    turnState: initializeRunTurnState(player),
     player,
     floors: {
       [initialFloorNumber]: initialFloor,

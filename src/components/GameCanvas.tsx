@@ -17,9 +17,16 @@ interface GameCanvasProps {
   onTileClick?: (tileX: number, tileY: number) => void;
   destinationTile?: Vec2 | null;
   pathPreviewTiles?: Vec2[];
+  destinationReachableThisTurn?: boolean;
 }
 
-export function GameCanvas({ run, onTileClick, destinationTile, pathPreviewTiles }: GameCanvasProps) {
+export function GameCanvas({
+  run,
+  onTileClick,
+  destinationTile,
+  pathPreviewTiles,
+  destinationReachableThisTurn = true,
+}: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const runRef = useRef(run);
   const targetPositionRef = useRef<Vec2>({ ...run.player.position });
@@ -84,6 +91,7 @@ export function GameCanvas({ run, onTileClick, destinationTile, pathPreviewTiles
         playerRenderPosition: rendered,
         destinationTile,
         pathPreviewTiles,
+        destinationReachableThisTurn,
       });
       rafIdRef.current = requestAnimationFrame(renderFrame);
     };
@@ -96,7 +104,7 @@ export function GameCanvas({ run, onTileClick, destinationTile, pathPreviewTiles
       }
       lastFrameTimeRef.current = 0;
     };
-  }, [destinationTile, floor?.floorNumber, pathPreviewTiles]);
+  }, [destinationReachableThisTurn, destinationTile, floor?.floorNumber, pathPreviewTiles]);
 
   if (!floor) {
     return null;
@@ -120,8 +128,22 @@ export function GameCanvas({ run, onTileClick, destinationTile, pathPreviewTiles
           if (!rect.width || !rect.height) {
             return;
           }
-          const screenX = ((event.clientX - rect.left) * canvas.width) / rect.width;
-          const screenY = ((event.clientY - rect.top) * canvas.height) / rect.height;
+          // When CSS uses object-fit: contain, the drawn canvas area may be letterboxed inside the element rect.
+          // Map clicks from client coordinates into the true rendered pixel area.
+          const scale = Math.min(rect.width / canvas.width, rect.height / canvas.height);
+          const renderedWidth = canvas.width * scale;
+          const renderedHeight = canvas.height * scale;
+          const offsetX = (rect.width - renderedWidth) / 2;
+          const offsetY = (rect.height - renderedHeight) / 2;
+          const localX = event.clientX - rect.left;
+          const localY = event.clientY - rect.top;
+
+          if (localX < offsetX || localX > offsetX + renderedWidth || localY < offsetY || localY > offsetY + renderedHeight) {
+            return;
+          }
+
+          const screenX = (localX - offsetX) / scale;
+          const screenY = (localY - offsetY) / scale;
 
           const cameraState = buildFollowCamera({
             playerTile: renderPositionRef.current,

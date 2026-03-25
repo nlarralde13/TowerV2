@@ -6,7 +6,7 @@
     "stamina": 50,
     "attack": 10,
     "defense": 5,
-    "speed": 1,
+    "movementFeet": 30,
     "carryWeight": 50
   },
   "equipment": {

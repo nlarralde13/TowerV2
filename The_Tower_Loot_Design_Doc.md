@@ -1,88 +1,28 @@
-
-# THE TOWER — Loot & Itemization Design Document (v0.1)
+# THE TOWER - Loot & Itemization Design Document (v0.2)
 
 ## 1. Loot Philosophy
-Loot is the main motivator for runs.
-Better loot = higher risk floors.
+Loot drives risk and extraction decisions across rounds.
 
----
+## 2. Loot in Turn-Based Flow
+- Loot appears from deterministic enemy/floor rules.
+- Loot pickup is a player-phase interaction with action cost.
+- Loot does not bypass turn economy.
 
-## 2. Loot Types
+## 3. Data-Driven Itemization
+Item behavior and stack limits are authoritative in `items.json`.
+Rarity, value, weight, and tags remain template-driven.
 
-| Loot Type | Examples |
-|-----------|----------|
-| Weapons | Sword, Axe, Bow |
-| Armor | Helmet, Chest, Boots |
-| Materials | Wood, Iron, Cloth |
-| Consumables | Potions, Food |
-| Tools | Rope, Bomb, Key |
-| Gems | Crafting |
-| Relics | Permanent upgrades |
+## 4. Sources
+- Enemy death drops
+- Chests/interactables
+- Floor reward placements
 
----
+## 5. MVP Scope
+- Deterministic loot tables
+- Ground loot state
+- Pickup flow integrated with inventory and action budget
+- Loot value contributes to run summary / XP systems
 
-## 3. Item Rarity
-
-| Rarity | Color | Description |
-|-------|------|-------------|
-| Common | Gray | Basic |
-| Uncommon | Green | Slight bonuses |
-| Rare | Blue | Strong |
-| Epic | Purple | Very strong |
-| Legendary | Gold | Unique |
-| Relic | Red | Permanent bonus |
-
----
-
-## 4. Weapon Stats
-
-| Stat | Description |
-|------|-------------|
-| Damage | Base damage |
-| Speed | Attack speed |
-| Crit Chance | Critical hit chance |
-| Crit Damage | Critical damage |
-| Range | Attack distance |
-| Durability | Item life |
-
----
-
-## 5. Armor Stats
-
-| Stat | Description |
-|------|-------------|
-| Defense | Damage reduction |
-| Weight | Affects speed |
-| Resistance | Fire/Poison/etc |
-| Durability | Item life |
-
----
-
-## 6. Loot Drop Sources
-
-| Source | Loot |
-|-------|------|
-| Enemies | Weapons, materials |
-| Boss | Rare gear |
-| Chests | Gear |
-| Breakables | Materials |
-| Secret Rooms | Rare loot |
-| Puzzle Rooms | Rewards |
-
----
-
-## 7. Inventory Value System
-Loot value is converted to XP when extracted.
-
-Value determines XP gain.
-
----
-
-## 8. MVP Loot System
-
-Start with:
-- 3 weapons
-- 3 armor pieces
-- 5 materials
-- 2 potions
-- 1 relic
+## 6. Future Scope
+- Expanded affixes/rarity curves
+- Item-specific tactical interactions

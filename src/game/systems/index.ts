@@ -10,4 +10,5 @@ export * from "./playerStats";
 export * from "./runSummary";
 export * from "./stateSync";
 export * from "./combat";
+export * from "./turnEconomy";
 export * from "./torch";

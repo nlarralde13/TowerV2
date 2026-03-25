@@ -5,13 +5,16 @@ import {
   loadGameData,
   loadProfile,
   loadRunState,
+  mapRunStateToRunSave,
+  mapRunStateToSnapshot,
   saveRunState,
   type JsonFetcher,
 } from "../src/game/data";
 import { createInitialRunState } from "../src/game/engine";
 import { playerLightAttack, resolveEnemyDeathLoot, spawnEnemiesForFloor, tryMoveByDelta } from "../src/game/systems";
 import { consumeTorchFuel, getTorchRevealRadius, restoreTorchFuel } from "../src/game/systems/torch";
-import type { EnemyInstance, FloorState, RunState } from "../src/game/types";
+import { computeMovementTilesPerTurn, type EnemyInstance, type FloorState, type RunState } from "../src/game/types";
+import { useRunStore } from "../src/store";
 
 class MemoryStorage implements Storage {
   private readonly rows = new Map<string, string>();
@@ -66,6 +69,32 @@ function deterministicRunSlice(run: ReturnType<typeof createInitialRunState>) {
       .sort(),
     extractionNodeIds: [...floor.extractionNodeIds].sort(),
   };
+}
+
+function findOpenMovementDelta(run: RunState): { x: number; y: number } | null {
+  const floor = run.floors[run.currentFloor];
+  if (!floor) {
+    return null;
+  }
+  const deltas = [
+    { x: 0, y: -1 },
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+  ];
+  for (const delta of deltas) {
+    const moved = tryMoveByDelta({
+      position: run.player.position,
+      delta,
+      tiles: floor.tiles,
+      width: floor.width,
+      height: floor.height,
+    });
+    if (moved.moved) {
+      return delta;
+    }
+  }
+  return null;
 }
 
 async function runRegressionSuite(): Promise<void> {
@@ -246,6 +275,205 @@ async function runRegressionSuite(): Promise<void> {
   const migratedProfile = loadProfile(templates.playerDefaults);
   assert.equal(migratedProfile.profileVersion, 1, "Invalid profile version should be reset to current profile schema.");
   assert.equal(migratedProfile.player.level, templates.playerDefaults.baseStats.level);
+
+  // TURN FLOW REGRESSION COVERAGE (TURN-014)
+  useRunStore.setState({
+    run: null,
+    profile: null,
+    hasSavedRun: false,
+    bootstrapData: null,
+    actionLog: [],
+  });
+  const store = useRunStore.getState();
+  store.setBootstrapData({
+    floorRules: templates.floorRules,
+    enemyTemplates: templates.enemies,
+    itemTemplates: templates.items,
+    lootTables: templates.lootTables,
+    playerDefaults: templates.playerDefaults,
+    extractionRules: templates.extractionRules,
+    xpTable: templates.xpTable,
+  });
+  useRunStore.getState().startRun("turn_regression_seed");
+  const startedRun = useRunStore.getState().run;
+  assert.ok(startedRun && startedRun.status === "active", "Store should create an active run for turn-flow regression.");
+
+  const expectedTilesPerTurn = computeMovementTilesPerTurn(startedRun.player.totalStats.movementFeet);
+  assert.equal(
+    startedRun.turnState.player.movementAllowanceTiles,
+    expectedTilesPerTurn,
+    "Movement allowance should derive from movementFeet with shared tile rule.",
+  );
+  assert.equal(
+    startedRun.turnState.player.movementRemainingTiles,
+    expectedTilesPerTurn,
+    "Movement remaining should start equal to allowance at turn start.",
+  );
+
+  const stepDelta = findOpenMovementDelta(startedRun);
+  assert.ok(stepDelta, "Regression run must have at least one movable adjacent tile.");
+  for (let i = 0; i < expectedTilesPerTurn; i += 1) {
+    const before = useRunStore.getState().run;
+    assert.ok(before && before.status === "active");
+    useRunStore.getState().movePlayerByDelta(stepDelta.x, stepDelta.y);
+    const after = useRunStore.getState().run;
+    assert.ok(after && after.status === "active");
+    const expectedRemaining = Math.max(0, before.turnState.player.movementRemainingTiles - 1);
+    assert.equal(
+      after.turnState.player.movementRemainingTiles,
+      expectedRemaining,
+      "Each successful movement step should spend exactly one movement tile.",
+    );
+  }
+
+  const movementSpentRun = useRunStore.getState().run;
+  assert.ok(movementSpentRun && movementSpentRun.status === "active");
+  const spentPosition = { ...movementSpentRun.player.position };
+  useRunStore.getState().movePlayerByDelta(stepDelta.x, stepDelta.y);
+  const blockedByBudgetRun = useRunStore.getState().run;
+  assert.ok(blockedByBudgetRun && blockedByBudgetRun.status === "active");
+  assert.equal(
+    blockedByBudgetRun.player.position.x,
+    spentPosition.x,
+    "Movement should fail once movement budget is exhausted.",
+  );
+  assert.equal(
+    blockedByBudgetRun.player.position.y,
+    spentPosition.y,
+    "Movement should not change position after movement budget is exhausted.",
+  );
+
+  // Prepare deterministic attack target for action-spend checks.
+  const attackRunBefore = useRunStore.getState().run;
+  assert.ok(attackRunBefore && attackRunBefore.status === "active");
+  const attackFloor = attackRunBefore.floors[attackRunBefore.currentFloor];
+  const attackTemplate = templates.enemies[0];
+  const attackEnemy: EnemyInstance = {
+    ...attackFloor.enemies[0],
+    enemyId: attackTemplate.id,
+    hpCurrent: attackTemplate.stats.hp,
+    position: { x: attackRunBefore.player.position.x + 1, y: attackRunBefore.player.position.y },
+    state: "idle",
+    lootResolved: false,
+  };
+  useRunStore.setState({
+    run: {
+      ...attackRunBefore,
+      player: { ...attackRunBefore.player, facing: "right" },
+      floors: {
+        ...attackRunBefore.floors,
+        [attackRunBefore.currentFloor]: {
+          ...attackFloor,
+          enemies: [attackEnemy],
+        },
+      },
+    },
+  });
+  const beforeAttack = useRunStore.getState().run;
+  assert.ok(beforeAttack && beforeAttack.status === "active");
+  const roundBeforeAttack = beforeAttack.turnState.roundNumber;
+  const torchBeforeAttack = beforeAttack.player.torch.fuelCurrent;
+  useRunStore.getState().playerAttack();
+  const afterFirstAttack = useRunStore.getState().run;
+  assert.ok(afterFirstAttack && afterFirstAttack.status === "active");
+  assert.equal(
+    afterFirstAttack.turnState.player.actionAvailable,
+    false,
+    "Successful attack should consume action for the turn.",
+  );
+  assert.equal(
+    afterFirstAttack.turnState.roundNumber,
+    roundBeforeAttack,
+    "Player attack should not auto-advance round (no post-action enemy batching).",
+  );
+  assert.equal(
+    afterFirstAttack.player.torch.fuelCurrent,
+    torchBeforeAttack,
+    "Player attack should not drain torch; torch drains during enemy phase round step.",
+  );
+
+  const enemyHpAfterFirstAttack = afterFirstAttack.floors[afterFirstAttack.currentFloor].enemies[0]?.hpCurrent ?? 0;
+  useRunStore.getState().playerAttack();
+  const afterSecondAttackAttempt = useRunStore.getState().run;
+  assert.ok(afterSecondAttackAttempt && afterSecondAttackAttempt.status === "active");
+  const enemyHpAfterSecondAttempt =
+    afterSecondAttackAttempt.floors[afterSecondAttackAttempt.currentFloor].enemies[0]?.hpCurrent ?? 0;
+  assert.equal(
+    enemyHpAfterSecondAttempt,
+    enemyHpAfterFirstAttack,
+    "Second action-consuming attack in same turn should be blocked and not apply damage.",
+  );
+
+  const beforeEndTurn = useRunStore.getState().run;
+  assert.ok(beforeEndTurn && beforeEndTurn.status === "active");
+  const roundBeforeEnd = beforeEndTurn.turnState.roundNumber;
+  const torchBeforeEnd = beforeEndTurn.player.torch.fuelCurrent;
+  const hpBeforeEnd = beforeEndTurn.player.vitals.hpCurrent;
+  useRunStore.getState().endTurn();
+  const afterEndTurn = useRunStore.getState().run;
+  assert.ok(afterEndTurn, "Run should still exist after end turn flow.");
+  if (afterEndTurn.status === "active") {
+    assert.equal(afterEndTurn.turnState.phase, "player", "End turn should resolve enemy phase and return to player phase.");
+    assert.equal(afterEndTurn.turnState.roundNumber, roundBeforeEnd + 1, "Round should advance exactly once per end turn.");
+    assert.equal(
+      afterEndTurn.player.torch.fuelCurrent,
+      Math.max(0, torchBeforeEnd - beforeEndTurn.player.torch.fuelDrainPerTurn),
+      "Torch should drain once per round during enemy phase.",
+    );
+    assert.equal(
+      afterEndTurn.turnState.player.movementRemainingTiles,
+      afterEndTurn.turnState.player.movementAllowanceTiles,
+      "New player turn should reset movement budget.",
+    );
+    assert.equal(afterEndTurn.turnState.player.actionAvailable, true, "New player turn should reset action availability.");
+    assert.ok(
+      afterEndTurn.player.vitals.hpCurrent <= hpBeforeEnd,
+      "Enemy phase should be able to apply damage before returning control to player.",
+    );
+  }
+
+  // Save migration coverage: missing/invalid turnState should normalize safely.
+  const migrationBaseline = useRunStore.getState().run;
+  assert.ok(migrationBaseline, "Migration coverage requires an existing run state.");
+
+  const snapshotMissingTurnState = mapRunStateToSnapshot(migrationBaseline);
+  delete (snapshotMissingTurnState as { turnState?: unknown }).turnState;
+  memoryStorage.setItem(
+    "tower.mvp.runSave.v3",
+    JSON.stringify({
+      version: 3,
+      savedAt: Date.now(),
+      runSave: mapRunStateToRunSave(migrationBaseline),
+      snapshot: snapshotMissingTurnState,
+    }),
+  );
+  const migratedMissingTurnState = loadRunState();
+  assert.ok(migratedMissingTurnState, "Missing turnState in snapshot should still load.");
+  assert.ok(
+    typeof migratedMissingTurnState?.turnState.roundNumber === "number" &&
+      migratedMissingTurnState.turnState.roundNumber >= 1,
+    "Missing turnState should default to safe initialized turn state.",
+  );
+
+  const snapshotInvalidTurnState = {
+    ...mapRunStateToSnapshot(migrationBaseline),
+    turnState: { roundNumber: "bad", phase: "weird" },
+  };
+  memoryStorage.setItem(
+    "tower.mvp.runSave.v3",
+    JSON.stringify({
+      version: 3,
+      savedAt: Date.now(),
+      runSave: mapRunStateToRunSave(migrationBaseline),
+      snapshot: snapshotInvalidTurnState,
+    }),
+  );
+  const migratedInvalidTurnState = loadRunState();
+  assert.ok(migratedInvalidTurnState, "Invalid turnState should still load via normalization fallback.");
+  assert.ok(
+    migratedInvalidTurnState?.turnState.phase === "player" || migratedInvalidTurnState?.turnState.phase === "enemies",
+    "Invalid turnState should normalize to a valid phase.",
+  );
 
   console.log("Simulation regression suite passed.");
 }

@@ -1,4 +1,4 @@
-import type { Direction, EquipSlot, ID, RuntimeVitals, Size2D, StatBlock, Vec2 } from "./common";
+import type { Direction, EquipSlot, ID, RuntimeVitals, Size2D, Vec2 } from "./common";
 import type { ItemInstance } from "./items";
 
 export interface PlayerStatSet {
@@ -15,7 +15,7 @@ export interface PlayerStatSet {
   dodgeChance: number;
   hpRegen: number;
   staminaRegen: number;
-  moveSpeed: number;
+  movementFeet: number;
   magicFind: number;
   armor: number;
   carryWeight: number;
@@ -29,7 +29,7 @@ export interface PlayerDefaults {
     stamina: number;
     attack: number;
     defense: number;
-    speed: number;
+    movementFeet: number;
     carryWeight: number;
   };
   equipment: Record<EquipSlot, ID | null>;
@@ -88,8 +88,6 @@ export interface PlayerState {
   equipmentStats: PlayerStatSet;
   buffStats: PlayerStatSet;
   totalStats: PlayerStatSet;
-  // Legacy gameplay compatibility fields. Values must mirror totalStats.
-  stats: StatBlock;
   vitals: RuntimeVitals;
   position: Vec2;
   facing: Direction;

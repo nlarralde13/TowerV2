@@ -1,4 +1,4 @@
-import type { Vec2 } from "../../game/types";
+import type { Vec2 } from "@game/types";
 
 export interface CameraState {
   x: number;
@@ -14,9 +14,9 @@ export interface CameraConfig {
 }
 
 export const DEFAULT_CAMERA_CONFIG: CameraConfig = {
-  // Smaller viewport makes camera-follow behavior obvious during early movement.
-  viewportWidth: 384,
-  viewportHeight: 288,
+  // Larger tactical viewport so more of the board is playable/visible at once.
+  viewportWidth: 576,
+  viewportHeight: 432,
   tileSize: 24,
 };
 

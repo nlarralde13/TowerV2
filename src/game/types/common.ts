@@ -81,15 +81,6 @@ export interface Size2D {
   h: number;
 }
 
-export interface StatBlock {
-  hp: number;
-  stamina: number;
-  attack: number;
-  defense: number;
-  speed: number;
-  carryWeight: number;
-}
-
 export interface RuntimeVitals {
   hpCurrent: number;
   staminaCurrent: number;
@@ -99,6 +90,8 @@ export interface RangeBand {
   min: number;
   max: number;
 }
+
+export const FEET_PER_TILE = 5;
 
 export const EQUIP_SLOTS: EquipSlot[] = [
   "mainHand",
