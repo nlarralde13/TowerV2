@@ -64,6 +64,122 @@
     "render": { "icon": "weapon_hatchet.png" }
   },
   {
+    "id": "weapon_starter_shortsword",
+    "name": "Starter Shortsword",
+    "type": "weapon",
+    "subtype": "sword",
+    "rarity": "common",
+    "value": 20,
+    "weight": 4,
+    "gridSize": { "w": 1, "h": 3 },
+    "stackSize": 1,
+    "equipSlot": "mainHand",
+    "flavorText": "A one-handed blade issued to new Tower runners.",
+    "stats": {
+      "attackBonus": 1,
+      "damageMin": 0,
+      "damageMax": 0
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "melee"],
+    "render": { "icon": "weapon_basic_sword.png" }
+  },
+  {
+    "id": "shield_starter_wooden",
+    "name": "Starter Shield",
+    "type": "armor",
+    "subtype": "shield",
+    "rarity": "common",
+    "value": 16,
+    "weight": 4,
+    "gridSize": { "w": 2, "h": 2 },
+    "stackSize": 1,
+    "equipSlot": "offHand",
+    "flavorText": "Light enough to carry, sturdy enough to catch a blow.",
+    "stats": {
+      "defenseBonus": 1
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "armor"],
+    "render": { "icon": "armor_basic_headgear.png" }
+  },
+  {
+    "id": "armor_starter_leather_hood",
+    "name": "Starter Leather Hood",
+    "type": "armor",
+    "subtype": "helmet",
+    "rarity": "common",
+    "value": 12,
+    "weight": 2,
+    "gridSize": { "w": 2, "h": 1 },
+    "stackSize": 1,
+    "equipSlot": "helmet",
+    "flavorText": "Simple leather hooding with minimal protection.",
+    "stats": {
+      "defenseBonus": 1
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "armor"],
+    "render": { "icon": "armor_basic_headgear.png" }
+  },
+  {
+    "id": "armor_starter_leather_chest",
+    "name": "Starter Leather Chest",
+    "type": "armor",
+    "subtype": "chest",
+    "rarity": "common",
+    "value": 16,
+    "weight": 4,
+    "gridSize": { "w": 2, "h": 2 },
+    "stackSize": 1,
+    "equipSlot": "chest",
+    "flavorText": "Basic leather cuirass with reinforced stitching.",
+    "stats": {
+      "defenseBonus": 1
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "armor"],
+    "render": { "icon": "armor_worn_chest.png" }
+  },
+  {
+    "id": "armor_starter_leather_legs",
+    "name": "Starter Leather Leggings",
+    "type": "armor",
+    "subtype": "legs",
+    "rarity": "common",
+    "value": 14,
+    "weight": 3,
+    "gridSize": { "w": 2, "h": 2 },
+    "stackSize": 1,
+    "equipSlot": "legs",
+    "flavorText": "Flexible leather leggings for fast movement.",
+    "stats": {
+      "defenseBonus": 1
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "armor"],
+    "render": { "icon": "armor_basic_leggings.png" }
+  },
+  {
+    "id": "armor_starter_leather_boots",
+    "name": "Starter Leather Boots",
+    "type": "armor",
+    "subtype": "boots",
+    "rarity": "common",
+    "value": 12,
+    "weight": 2,
+    "gridSize": { "w": 2, "h": 1 },
+    "stackSize": 1,
+    "equipSlot": "feet",
+    "flavorText": "Worn leather boots that still grip stone well.",
+    "stats": {
+      "defenseBonus": 1
+    },
+    "requirements": { "level": 1 },
+    "tags": ["starter", "armor"],
+    "render": { "icon": "armor_basic_headgear.png" }
+  },
+  {
     "id": "armor_basic_headgear",
     "name": "Basic Headgear",
     "type": "armor",
@@ -124,7 +240,7 @@
   },
   {
     "id": "consumable_small_potion",
-    "name": "Small Potion",
+    "name": "Health Potion",
     "type": "consumable",
     "subtype": "potion",
     "rarity": "common",
@@ -132,7 +248,10 @@
     "weight": 1,
     "gridSize": { "w": 1, "h": 1 },
     "stackSize": 5,
-    "flavorText": "A basic tonic. Not useful for the torch.",
+    "flavorText": "A basic restorative tonic used by Tower runners.",
+    "stats": {
+      "hpRestore": 10
+    },
     "tags": ["healing", "belt"],
     "render": { "icon": "consumable_small_potion.png" }
   },
@@ -241,5 +360,36 @@
     "stackSize": 1,
     "tags": ["extraction"],
     "render": { "icon": "tool_grapple_hook.png" }
+  },
+  {
+    "id": "consumable_field_bandage",
+    "name": "Field Bandage",
+    "type": "consumable",
+    "subtype": "medical",
+    "rarity": "common",
+    "value": 8,
+    "weight": 0.2,
+    "gridSize": { "w": 1, "h": 1 },
+    "stackSize": 10,
+    "flavorText": "Rough cloth wrap. Stops bleeding just enough to keep moving.",
+    "stats": {
+      "hpRestore": 5
+    },
+    "tags": ["healing", "test_seed"],
+    "render": { "icon": "consumable_small_potion.png" }
+  },
+  {
+    "id": "debug_tower_sigil",
+    "name": "Tower Sigil Fragment",
+    "type": "material",
+    "subtype": "sigil",
+    "rarity": "uncommon",
+    "value": 13,
+    "weight": 0.1,
+    "gridSize": { "w": 1, "h": 1 },
+    "stackSize": 50,
+    "flavorText": "A stamped fragment used as a static test item in early runs.",
+    "tags": ["test_seed", "material"],
+    "render": { "icon": "mat_scrap_iron.png" }
   }
 ]

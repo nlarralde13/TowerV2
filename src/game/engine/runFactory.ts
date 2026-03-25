@@ -1,5 +1,19 @@
-import { initializeRunTurnState, type EnemyTemplate, type FloorRule, type PlayerDefaults, type RunState, type SeedString } from "../types";
-import { generateFloorState, selectFloorRuleForFloor, spawnEnemiesForFloor } from "../systems";
+import {
+  initializeRunTurnState,
+  type EnemyTemplate,
+  type FloorRule,
+  type ItemTemplate,
+  type PlayerDefaults,
+  type RunState,
+  type SeedString,
+} from "../types";
+import {
+  addItemToInventory,
+  clampPlayerVitalsToEffectiveStats,
+  generateFloorState,
+  selectFloorRuleForFloor,
+  spawnEnemiesForFloor,
+} from "../systems";
 
 function createEmptyStatSet(): RunState["player"]["baseStats"] {
   return {
@@ -12,7 +26,9 @@ function createEmptyStatSet(): RunState["player"]["baseStats"] {
     stamina: 0,
     attack: 0,
     defense: 0,
+    hitChance: 0,
     critChance: 0,
+    critMultiplier: 0,
     dodgeChance: 0,
     hpRegen: 0,
     staminaRegen: 0,
@@ -23,14 +39,79 @@ function createEmptyStatSet(): RunState["player"]["baseStats"] {
   };
 }
 
-function buildPlayerDefaultsState(playerDefaults: PlayerDefaults): RunState["player"] {
+function buildStarterEquipment(
+  playerDefaults: PlayerDefaults,
+  itemTemplatesById: ReadonlyMap<string, ItemTemplate>,
+): RunState["player"]["equipment"] {
+  const equipment: RunState["player"]["equipment"] = {
+    mainHand: null,
+    offHand: null,
+    helmet: null,
+    chest: null,
+    legs: null,
+    feet: null,
+  };
+
+  for (const slot of Object.keys(equipment) as Array<keyof RunState["player"]["equipment"]>) {
+    const defaultItemId = playerDefaults.equipment[slot];
+    if (!defaultItemId) continue;
+    const template = itemTemplatesById.get(defaultItemId);
+    if (!template || template.equipSlot !== slot) continue;
+    equipment[slot] = {
+      instanceId: `starter_${slot}_${defaultItemId}`,
+      itemId: defaultItemId,
+      quantity: 1,
+      position: {
+        container: "equipment",
+        slot,
+      },
+    };
+  }
+
+  return equipment;
+}
+
+function buildStarterInventoryItems(params: {
+  player: RunState["player"];
+  playerDefaults: PlayerDefaults;
+  itemTemplatesById: ReadonlyMap<string, ItemTemplate>;
+}): RunState["player"] {
+  const { player, playerDefaults, itemTemplatesById } = params;
+  let nextPlayer = player;
+  const starterItems = playerDefaults.inventory.startingItems ?? [];
+  for (const entry of starterItems) {
+    const template = itemTemplatesById.get(entry.itemId);
+    if (!template) continue;
+    const added = addItemToInventory({
+      player: nextPlayer,
+      item: {
+        instanceId: `starter_inventory_${entry.itemId}`,
+        itemId: entry.itemId,
+        quantity: entry.quantity,
+        position: { container: "inventory" },
+      },
+      template,
+      itemTemplatesById,
+    });
+    nextPlayer = added.player;
+  }
+  return nextPlayer;
+}
+
+function buildPlayerDefaultsState(
+  playerDefaults: PlayerDefaults,
+  itemTemplatesById: ReadonlyMap<string, ItemTemplate>,
+): RunState["player"] {
   const baseStats: RunState["player"]["baseStats"] = {
     ...createEmptyStatSet(),
-    // Keep existing default balance values as source of truth for MVP.
+    // Combat balance baseline — see playerDefaults.json for tuning values.
+    // Weapon/armor equipment stats are layered on top during recomputePlayerStats.
     hp: playerDefaults.baseStats.hp,
     stamina: playerDefaults.baseStats.stamina,
     attack: playerDefaults.baseStats.attack,
     defense: playerDefaults.baseStats.defense,
+    hitChance: playerDefaults.baseStats.hitChance,
+    critMultiplier: playerDefaults.baseStats.critMultiplier,
     movementFeet: playerDefaults.baseStats.movementFeet,
     carryWeight: playerDefaults.baseStats.carryWeight,
   };
@@ -64,14 +145,7 @@ function buildPlayerDefaultsState(playerDefaults: PlayerDefaults): RunState["pla
       height: playerDefaults.inventory.backpack.h,
       items: [],
     },
-    equipment: {
-      mainHand: null,
-      offHand: null,
-      helmet: null,
-      chest: null,
-      legs: null,
-      feet: null,
-    },
+    equipment: buildStarterEquipment(playerDefaults, itemTemplatesById),
     belt: {
       slots: Array.from({ length: playerDefaults.inventory.beltSlots }, () => null),
     },
@@ -96,10 +170,19 @@ export function createInitialRunState(params: {
   seed: SeedString;
   floorRules: FloorRule[];
   enemyTemplates: EnemyTemplate[];
+  itemTemplates: ItemTemplate[];
   playerDefaults: PlayerDefaults;
 }): RunState {
-  const { runId, seed, floorRules, enemyTemplates, playerDefaults } = params;
-  const player = buildPlayerDefaultsState(playerDefaults);
+  const { runId, seed, floorRules, enemyTemplates, itemTemplates, playerDefaults } = params;
+  const itemTemplatesById = new Map(itemTemplates.map((item) => [item.id, item]));
+  const player = clampPlayerVitalsToEffectiveStats(
+    buildStarterInventoryItems({
+      player: buildPlayerDefaultsState(playerDefaults, itemTemplatesById),
+      playerDefaults,
+      itemTemplatesById,
+    }),
+    itemTemplatesById,
+  );
   const initialFloorNumber = 1;
   const floorRule = selectFloorRuleForFloor(initialFloorNumber, floorRules);
   const initialFloor = generateFloorState({

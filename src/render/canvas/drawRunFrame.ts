@@ -1,4 +1,4 @@
-import type { FloorState, RunState, TileState, Vec2 } from "@game/types";
+import type { EnemyTemplate, FloorState, RunState, TileState, Vec2 } from "@game/types";
 import { directionToUnitVector } from "@game/utils";
 import {
   type CameraConfig,
@@ -13,6 +13,8 @@ export interface DrawOptions {
   destinationTile?: Vec2 | null;
   pathPreviewTiles?: Vec2[];
   destinationReachableThisTurn?: boolean;
+  enemyTemplatesById?: ReadonlyMap<string, EnemyTemplate>;
+  targetedEnemyInstanceId?: string | null;
 }
 
 function tileColor(roomType: FloorState["tiles"][number]["roomType"]): string {
@@ -163,10 +165,38 @@ export function drawRunFrame(
       continue;
     }
 
-    context.fillStyle = "#ef4444";
+    const isTargeted = options.targetedEnemyInstanceId === enemy.instanceId;
+
+    // Targeted enemy: amber highlight ring behind the body circle
+    if (isTargeted) {
+      context.strokeStyle = "#fbbf24";
+      context.lineWidth = Math.max(2, tileSize * 0.12);
+      context.beginPath();
+      context.arc(screen.x, screen.y, tileSize * 0.38, 0, Math.PI * 2);
+      context.stroke();
+    }
+
+    // Enemy body
+    context.fillStyle = isTargeted ? "#f87171" : "#ef4444";
     context.beginPath();
     context.arc(screen.x, screen.y, tileSize * 0.28, 0, Math.PI * 2);
     context.fill();
+
+    // HP bar above the enemy circle
+    const template = options.enemyTemplatesById?.get(enemy.enemyId);
+    if (template && template.stats.hp > 0) {
+      const hpPercent = Math.max(0, Math.min(1, enemy.hpCurrent / template.stats.hp));
+      const barW = tileSize * 0.7;
+      const barH = Math.max(3, tileSize * 0.1);
+      const barX = screen.x - barW / 2;
+      const barY = screen.y - tileSize * 0.38 - barH - 2;
+      // Track (dark background)
+      context.fillStyle = "#111827";
+      context.fillRect(barX, barY, barW, barH);
+      // Fill colour: green → amber → red based on remaining HP
+      context.fillStyle = hpPercent > 0.5 ? "#22c55e" : hpPercent > 0.25 ? "#f59e0b" : "#ef4444";
+      context.fillRect(barX, barY, barW * hpPercent, barH);
+    }
   }
 
   for (const loot of floor.groundLoot) {

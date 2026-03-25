@@ -229,24 +229,44 @@ export const createInventorySlice: StateCreator<RunStoreState & InventorySlice, 
 
     const template = itemTemplatesById.get(stack.itemId);
     if (!template || !isConsumableUseAction(template)) return;
-    const restoreAmount = template.stats?.torchFuelRestore ?? 0;
+    const torchRestoreAmount = template.stats?.torchFuelRestore ?? 0;
+    const hpRestoreAmount = template.stats?.hpRestore ?? 0;
+    const hpMissing = Math.max(0, run.player.totalStats.hp - run.player.vitals.hpCurrent);
+    const hpRecovered = Math.min(hpMissing, hpRestoreAmount);
+    if (torchRestoreAmount <= 0 && hpRecovered <= 0) {
+      set((state) => ({
+        actionLog: withActionLogs(state.actionLog, [
+          { category: "inventory", message: `${template.name} has no effect right now.` },
+        ]),
+      }));
+      return;
+    }
 
     const consumed = consumeInventoryItemStack({ player: run.player, instanceId });
     if (!consumed.consumed) return;
 
-    const restoredTorch = restoreTorchFuel(consumed.player.torch, restoreAmount);
+    const restoredTorch = restoreTorchFuel(consumed.player.torch, torchRestoreAmount);
     const nextRun: RunState = applyInteractionCost({
       ...run,
-      player: withUpdatedTorch(consumed.player, restoredTorch),
+      player: {
+        ...withUpdatedTorch(consumed.player, restoredTorch),
+        vitals: {
+          ...consumed.player.vitals,
+          hpCurrent: Math.min(consumed.player.totalStats.hp, consumed.player.vitals.hpCurrent + hpRecovered),
+        },
+      },
     }, "consume_item");
 
     const persisted = persistRunTransition(nextRun, get().profile, bootstrapData);
+    const effects: string[] = [];
+    if (hpRecovered > 0) effects.push(`HP +${hpRecovered.toFixed(0)}`);
+    if (torchRestoreAmount > 0) effects.push(`Torch +${torchRestoreAmount.toFixed(1)} fuel`);
     set((state) => ({
       run: nextRun,
       hasSavedRun: persisted.hasSavedRun,
       profile: persisted.profile,
       actionLog: withActionLogs(state.actionLog, [
-        { category: "inventory", eventType: "consume_torch_fuel", message: `Used ${template.name}. Torch +${restoreAmount.toFixed(1)} fuel.` },
+        { category: "inventory", eventType: "consume_item", message: `Used ${template.name}. ${effects.join(" / ")}.` },
       ]),
     }));
   },

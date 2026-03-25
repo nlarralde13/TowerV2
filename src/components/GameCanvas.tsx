@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { RunState, Vec2 } from "../game/types";
+import type { EnemyTemplate, RunState, Vec2 } from "../game/types";
 import {
   buildFollowCamera,
   DEFAULT_CAMERA_CONFIG,
@@ -18,6 +18,8 @@ interface GameCanvasProps {
   destinationTile?: Vec2 | null;
   pathPreviewTiles?: Vec2[];
   destinationReachableThisTurn?: boolean;
+  enemyTemplatesById?: ReadonlyMap<string, EnemyTemplate>;
+  targetedEnemyInstanceId?: string | null;
 }
 
 export function GameCanvas({
@@ -26,9 +28,23 @@ export function GameCanvas({
   destinationTile,
   pathPreviewTiles,
   destinationReachableThisTurn = true,
+  enemyTemplatesById,
+  targetedEnemyInstanceId,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const runRef = useRef(run);
+  // enemyTemplatesById is updated on every render (assigned directly, not via dep array)
+  // so the RAF loop always reads the latest value without a stale-closure issue.
+  const enemyTemplatesByIdRef = useRef<ReadonlyMap<string, EnemyTemplate>>(new Map());
+  enemyTemplatesByIdRef.current = enemyTemplatesById ?? new Map();
+  const destinationTileRef = useRef<Vec2 | null>(destinationTile ?? null);
+  destinationTileRef.current = destinationTile ?? null;
+  const pathPreviewTilesRef = useRef<Vec2[]>(pathPreviewTiles ?? []);
+  pathPreviewTilesRef.current = pathPreviewTiles ?? [];
+  const destinationReachableThisTurnRef = useRef<boolean>(destinationReachableThisTurn);
+  destinationReachableThisTurnRef.current = destinationReachableThisTurn;
+  const targetedEnemyInstanceIdRef = useRef<string | null>(targetedEnemyInstanceId ?? null);
+  targetedEnemyInstanceIdRef.current = targetedEnemyInstanceId ?? null;
   const targetPositionRef = useRef<Vec2>({ ...run.player.position });
   const renderPositionRef = useRef<Vec2>({ ...run.player.position });
   const previousFloorRef = useRef<number>(run.currentFloor);
@@ -89,9 +105,11 @@ export function GameCanvas({
         tileSize: TILE_SIZE,
         camera: DEFAULT_CAMERA_CONFIG,
         playerRenderPosition: rendered,
-        destinationTile,
-        pathPreviewTiles,
-        destinationReachableThisTurn,
+        destinationTile: destinationTileRef.current,
+        pathPreviewTiles: pathPreviewTilesRef.current,
+        destinationReachableThisTurn: destinationReachableThisTurnRef.current,
+        enemyTemplatesById: enemyTemplatesByIdRef.current,
+        targetedEnemyInstanceId: targetedEnemyInstanceIdRef.current,
       });
       rafIdRef.current = requestAnimationFrame(renderFrame);
     };
@@ -104,7 +122,7 @@ export function GameCanvas({
       }
       lastFrameTimeRef.current = 0;
     };
-  }, [destinationReachableThisTurn, destinationTile, floor?.floorNumber, pathPreviewTiles]);
+  }, [floor?.floorNumber]);
 
   if (!floor) {
     return null;

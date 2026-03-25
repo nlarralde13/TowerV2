@@ -91,13 +91,9 @@ function putItemIntoInventory(params: {
   inventoryWidth: number;
   inventoryHeight: number;
 }): { inventoryItems: ItemInstance[]; placed: boolean } {
-  const { inventoryItems, item, itemTemplatesById, inventoryWidth, inventoryHeight } = params;
+  const { inventoryItems, item, itemTemplatesById } = params;
   const template = itemTemplatesById.get(item.itemId);
   if (!template) {
-    return { inventoryItems, placed: false };
-  }
-  const openSlot = findOpenSlot(inventoryItems, itemTemplatesById, template, inventoryWidth, inventoryHeight);
-  if (!openSlot) {
     return { inventoryItems, placed: false };
   }
 
@@ -105,7 +101,7 @@ function putItemIntoInventory(params: {
     placed: true,
     inventoryItems: [
       ...inventoryItems,
-      cloneInventoryItemWithPosition(item, { container: "inventory", x: openSlot.x, y: openSlot.y }),
+      cloneInventoryItemWithPosition(item, { container: "inventory" }),
     ],
   };
 }
@@ -567,16 +563,6 @@ export function addItemToInventory(params: {
   }
 
   while (remaining > 0) {
-    const slot = findOpenSlot(
-      inventoryItems,
-      itemTemplatesById,
-      template,
-      player.inventory.width,
-      player.inventory.height,
-    );
-    if (!slot) {
-      break;
-    }
     const toTransfer = Math.min(template.stackSize, remaining);
     inventoryItems.push({
       ...item,
@@ -584,8 +570,6 @@ export function addItemToInventory(params: {
       quantity: toTransfer,
       position: {
         container: "inventory",
-        x: slot.x,
-        y: slot.y,
       },
     });
     remaining -= toTransfer;
@@ -642,6 +626,7 @@ export function consumeInventoryItemStack(params: {
 }
 
 export function isConsumableUseAction(template: ItemTemplate | null | undefined): boolean {
-  const restoreAmount = template?.stats?.torchFuelRestore ?? 0;
-  return Boolean(template && template.type === "consumable" && restoreAmount > 0);
+  const torchRestore = template?.stats?.torchFuelRestore ?? 0;
+  const hpRestore = template?.stats?.hpRestore ?? 0;
+  return Boolean(template && template.type === "consumable" && (torchRestore > 0 || hpRestore > 0));
 }

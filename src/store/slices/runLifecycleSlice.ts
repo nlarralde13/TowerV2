@@ -48,6 +48,7 @@ export const createRunLifecycleSlice: StateCreator<
       seed,
       floorRules: bootstrapData.floorRules,
       enemyTemplates: bootstrapData.enemyTemplates,
+      itemTemplates: bootstrapData.itemTemplates,
       playerDefaults: bootstrapData.playerDefaults,
     });
 

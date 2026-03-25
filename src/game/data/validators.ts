@@ -96,6 +96,7 @@ export function validateEnemiesJson(input: unknown): EnemyTemplate[] {
       stats: {
         hp: expectNumber(stats.hp, `enemies[${index}].stats.hp`, { min: 1 }),
         damage: expectNumber(stats.damage, `enemies[${index}].stats.damage`, { min: 0 }),
+        defense: expectNumber(stats.defense, `enemies[${index}].stats.defense`, { min: 0 }),
         speed: expectNumber(stats.speed, `enemies[${index}].stats.speed`, { min: 0 }),
         attackSpeed: expectNumber(stats.attackSpeed, `enemies[${index}].stats.attackSpeed`, { min: 0 }),
         attackRange: expectNumber(stats.attackRange, `enemies[${index}].stats.attackRange`, { min: 0 }),
@@ -171,6 +172,10 @@ export function validateItemsJson(input: unknown): ItemTemplate[] {
 
     if (stats) {
       item.stats = {
+        hpRestore:
+          typeof stats.hpRestore === "undefined"
+            ? undefined
+            : expectNumber(stats.hpRestore, `items[${index}].stats.hpRestore`, { min: 0 }),
         hpBonus:
           typeof stats.hpBonus === "undefined"
             ? undefined
@@ -555,6 +560,8 @@ export function validatePlayerDefaultsJson(input: unknown): PlayerDefaults {
       stamina: expectNumber(baseStats.stamina, "playerDefaults.baseStats.stamina", { min: 0 }),
       attack: expectNumber(baseStats.attack, "playerDefaults.baseStats.attack"),
       defense: expectNumber(baseStats.defense, "playerDefaults.baseStats.defense"),
+      hitChance: expectNumber(baseStats.hitChance, "playerDefaults.baseStats.hitChance", { min: 0 }),
+      critMultiplier: expectNumber(baseStats.critMultiplier, "playerDefaults.baseStats.critMultiplier", { min: 1 }),
       movementFeet:
         typeof baseStats.movementFeet === "number"
           ? expectNumber(baseStats.movementFeet, "playerDefaults.baseStats.movementFeet", { min: 0 })
@@ -572,6 +579,19 @@ export function validatePlayerDefaultsJson(input: unknown): PlayerDefaults {
         min: 3,
         max: 3,
       }),
+      startingItems:
+        typeof inventory.startingItems === "undefined"
+          ? []
+          : expectArray(inventory.startingItems, "playerDefaults.inventory.startingItems").map((entry, index) => {
+              const row = expectRecord(entry, `playerDefaults.inventory.startingItems[${index}]`);
+              return {
+                itemId: expectString(row.itemId, `playerDefaults.inventory.startingItems[${index}].itemId`),
+                quantity: expectNumber(row.quantity, `playerDefaults.inventory.startingItems[${index}].quantity`, {
+                  integer: true,
+                  min: 1,
+                }),
+              };
+            }),
     },
     torch: {
       fuelMax: expectNumber(torch.fuelMax, "playerDefaults.torch.fuelMax", { min: 1 }),
@@ -692,6 +712,9 @@ export function validateCrossReferences(data: GameDataTemplates): GameDataTempla
     if (equippedItemId !== null) {
       assertReferenceExists(itemIds, equippedItemId, `playerDefaults.equipment.${slot}`, "item");
     }
+  }
+  for (const starterItem of data.playerDefaults.inventory.startingItems ?? []) {
+    assertReferenceExists(itemIds, starterItem.itemId, "playerDefaults.inventory.startingItems", "item");
   }
 
   return data;

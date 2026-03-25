@@ -108,6 +108,7 @@ async function runRegressionSuite(): Promise<void> {
     seed: "sim_seed_alpha",
     floorRules: templates.floorRules,
     enemyTemplates: templates.enemies,
+    itemTemplates: templates.items,
     playerDefaults: templates.playerDefaults,
   });
   const runB = createInitialRunState({
@@ -115,6 +116,7 @@ async function runRegressionSuite(): Promise<void> {
     seed: "sim_seed_alpha",
     floorRules: templates.floorRules,
     enemyTemplates: templates.enemies,
+    itemTemplates: templates.items,
     playerDefaults: templates.playerDefaults,
   });
 

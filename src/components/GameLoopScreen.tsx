@@ -4,32 +4,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { loadGameData } from "../game/data";
 import { canPerformInteraction, findPath } from "../game/systems";
 import type { ItemTemplate, Vec2 } from "../game/types";
+import { facingFromDelta } from "../game/utils";
 import { getTile } from "../game/world";
 import { buildFollowCamera, DEFAULT_CAMERA_CONFIG } from "../render";
 import { useRunStore } from "../store";
 import type { ActionLogEntry } from "../store/types";
+import { EnemyPanel } from "./EnemyPanel";
 import { GameCanvas } from "./GameCanvas";
-import { InventoryPanel } from "./InventoryPanel";
-import { PlayerInfoPanel } from "./PlayerInfoPanel";
+import { LoadoutOverlay } from "./LoadoutOverlay";
+import { PlayerPanel } from "./PlayerPanel";
 
 const DEFAULT_SEED = "tower_run_001";
-const LEFT_DRAWER_TABS = [
-  { id: "inventory", label: "Inventory", hotkey: "I" },
-  { id: "character", label: "Character", hotkey: "C" },
-] as const;
-const RIGHT_DRAWER_TABS = [
-  { id: "journal", label: "Journal", hotkey: "J" },
-  { id: "log", label: "Log", hotkey: "L" },
-] as const;
-type LeftDrawerTabId = (typeof LEFT_DRAWER_TABS)[number]["id"];
-type RightDrawerTabId = (typeof RIGHT_DRAWER_TABS)[number]["id"];
-
-const JOURNAL_PLACEHOLDER_ENTRIES = [
-  "[Entry] The lower crypts breathe in rhythms not my own.",
-  "[Entry] Something in crimson plate watched from the stairwell arch.",
-  "[Entry] Torch oil is thinning. Shadows grow teeth near extraction doors.",
-  "[Entry] Next run: prioritize ranged weapon and carry more fuel.",
-];
 const PLANNED_MOVE_STEP_DELAY_MS = 95;
 const VIEWPORT_EVENT_LOG_LIMIT = 8;
 const EVENT_LOG_IGNORE_PREFIXES = ["Run started", "Saved run", "Run reset to menu", "Torch lit at"];
@@ -38,14 +23,13 @@ export function GameLoopScreen() {
   const [seed, setSeed] = useState(DEFAULT_SEED);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [logFilter, setLogFilter] = useState<"all" | "combat" | "loot" | "inventory" | "system">("all");
-  const [activeLeftTab, setActiveLeftTab] = useState<LeftDrawerTabId | null>(null);
-  const [activeRightTab, setActiveRightTab] = useState<RightDrawerTabId | null>(null);
   const [clickMoveTarget, setClickMoveTarget] = useState<{ x: number; y: number } | null>(null);
   const [pathPreviewTiles, setPathPreviewTiles] = useState<Vec2[]>([]);
   const [pathReachableThisTurn, setPathReachableThisTurn] = useState(true);
+  const [targetedEnemyInstanceId, setTargetedEnemyInstanceId] = useState<string | null>(null);
   const [isExecutingPlannedMove, setIsExecutingPlannedMove] = useState(false);
   const [hoveredConsoleItem, setHoveredConsoleItem] = useState<ItemTemplate | null>(null);
+  const [showLoadoutOverlay, setShowLoadoutOverlay] = useState(false);
   const actionLogListRef = useRef<HTMLDivElement | null>(null);
   const stickLogToBottomRef = useRef(true);
 
@@ -58,12 +42,13 @@ export function GameLoopScreen() {
   const resumeSavedRun = useRunStore((state) => state.resumeSavedRun);
   const clearSavedRun = useRunStore((state) => state.clearSavedRun);
   const movePlayerByDelta = useRunStore((state) => state.movePlayerByDelta);
+  const setPlayerFacing = useRunStore((state) => state.setPlayerFacing);
   const playerAttack = useRunStore((state) => state.playerAttack);
   const endTurn = useRunStore((state) => state.endTurn);
   const pickupLoot = useRunStore((state) => state.pickupLoot);
+  const pickupLootFromTile = useRunStore((state) => state.pickupLootFromTile);
   const tryExtract = useRunStore((state) => state.tryExtract);
   const actionLog = useRunStore((state) => state.actionLog);
-  const clearActionLog = useRunStore((state) => state.clearActionLog);
   const restart = useRunStore((state) => state.restart);
 
   useEffect(() => {
@@ -97,63 +82,32 @@ export function GameLoopScreen() {
   }, [setBootstrapData]);
 
   useEffect(() => {
-    function applyDirection(direction: "up" | "down" | "left" | "right"): void {
-      if (direction === "up") movePlayerByDelta(0, -1);
-      else if (direction === "down") movePlayerByDelta(0, 1);
-      else if (direction === "left") movePlayerByDelta(-1, 0);
-      else if (direction === "right") movePlayerByDelta(1, 0);
-    }
-
-    function directionFromKey(key: string): "up" | "down" | "left" | "right" | null {
-      if (key === "arrowup" || key === "w") return "up";
-      if (key === "arrowdown" || key === "s") return "down";
-      if (key === "arrowleft" || key === "a") return "left";
-      if (key === "arrowright" || key === "d") return "right";
-      return null;
-    }
-
     function onKeyDown(event: KeyboardEvent) {
       const activeRun = useRunStore.getState().run;
       if (!activeRun || activeRun.status !== "active") return;
       if (isExecutingPlannedMove) return;
 
       const key = event.key.toLowerCase();
-      const direction = directionFromKey(key);
-      if (direction) {
-        if (event.repeat) return;
-        event.preventDefault();
-        clearMovementPlan();
-        applyDirection(direction);
-      } else if (key === "enter") {
+      // Movement is click-only — no keyboard movement keys
+      if (key === " ") {
         event.preventDefault();
         void confirmMovementPlan();
       } else if (key === "escape") {
         event.preventDefault();
+        if (showLoadoutOverlay) {
+          setShowLoadoutOverlay(false);
+          return;
+        }
         clearMovementPlan();
-      } else if (key === "e") {
-        event.preventDefault();
-        tryExtract();
       } else if (key === "f") {
         event.preventDefault();
         playerAttack();
-      } else if (key === " ") {
+      } else if (key === "enter" || key === "e") {
         event.preventDefault();
         endTurn();
       } else if (key === "g") {
         event.preventDefault();
         pickupLoot();
-      } else if (key === "i") {
-        event.preventDefault();
-        setActiveLeftTab((current) => (current === "inventory" ? null : "inventory"));
-      } else if (key === "c") {
-        event.preventDefault();
-        setActiveLeftTab((current) => (current === "character" ? null : "character"));
-      } else if (key === "l") {
-        event.preventDefault();
-        setActiveRightTab((current) => (current === "log" ? null : "log"));
-      } else if (key === "j") {
-        event.preventDefault();
-        setActiveRightTab((current) => (current === "journal" ? null : "journal"));
       }
     }
 
@@ -161,14 +115,42 @@ export function GameLoopScreen() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [endTurn, isExecutingPlannedMove, movePlayerByDelta, pathPreviewTiles, pickupLoot, playerAttack, tryExtract]);
+  }, [endTurn, isExecutingPlannedMove, movePlayerByDelta, pathPreviewTiles, pickupLoot, playerAttack, showLoadoutOverlay, tryExtract]);
 
   const currentFloor = run ? run.floors[run.currentFloor] : null;
   const visibleTiles = useMemo(() => currentFloor?.tiles.filter((tile) => tile.visible).length ?? 0, [currentFloor]);
-  const filteredActionLog = useMemo(() => {
-    if (logFilter === "all") return actionLog;
-    return actionLog.filter((entry) => entry.category === logFilter);
-  }, [actionLog, logFilter]);
+
+  const enemyTemplatesById = useMemo(
+    () => new Map((bootstrapData?.enemyTemplates ?? []).map((t) => [t.id, t])),
+    [bootstrapData?.enemyTemplates],
+  );
+
+  // Resolve the currently targeted enemy (cleared if dead or run changes)
+  const targetedEnemyInstance = useMemo(() => {
+    if (!targetedEnemyInstanceId || !currentFloor) return null;
+    const enemy = currentFloor.enemies.find(
+      (e) => e.instanceId === targetedEnemyInstanceId && e.state !== "dead",
+    );
+    return enemy ?? null;
+  }, [targetedEnemyInstanceId, currentFloor]);
+  const visibleEnemies = useMemo(
+    () => currentFloor?.enemies.filter((enemy) => enemy.state !== "dead") ?? [],
+    [currentFloor],
+  );
+  const torchLitEnemyIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!currentFloor) return ids;
+    for (const tile of currentFloor.tiles) {
+      if (tile.visible && tile.occupiedByEnemyId) {
+        ids.add(tile.occupiedByEnemyId);
+      }
+    }
+    return ids;
+  }, [currentFloor]);
+  const torchLitEnemies = useMemo(
+    () => visibleEnemies.filter((enemy) => torchLitEnemyIds.has(enemy.instanceId)),
+    [torchLitEnemyIds, visibleEnemies],
+  );
   const viewportEventLog = useMemo(() => {
     return actionLog
       .filter((entry) => {
@@ -184,7 +166,7 @@ export function GameLoopScreen() {
     const list = actionLogListRef.current;
     if (!list || !stickLogToBottomRef.current) return;
     list.scrollTop = list.scrollHeight;
-  }, [filteredActionLog]);
+  }, [viewportEventLog]);
 
   function formatLogTimestamp(timestamp: number): string {
     return new Date(timestamp).toLocaleTimeString([], {
@@ -193,11 +175,6 @@ export function GameLoopScreen() {
       minute: "2-digit",
       second: "2-digit",
     });
-  }
-
-  function formatActionLogEntry(entry: (typeof actionLog)[number]): string {
-    const stamp = formatLogTimestamp(entry.timestamp);
-    return `[${stamp}][${entry.category}][${entry.level}] ${entry.message}`;
   }
 
   function getLootEntryItemMeta(entry: ActionLogEntry): { itemId: string; itemName: string; quantity: number } | null {
@@ -236,6 +213,9 @@ export function GameLoopScreen() {
     if (typeof template.stats?.torchFuelRestore === "number" && template.stats.torchFuelRestore > 0) {
       lines.push(`+${template.stats.torchFuelRestore} Torch Fuel`);
     }
+    if (typeof template.stats?.hpRestore === "number" && template.stats.hpRestore > 0) {
+      lines.push(`+${template.stats.hpRestore} HP`);
+    }
     if (lines.length === 0) {
       lines.push("No direct stat modifiers");
     }
@@ -258,6 +238,8 @@ export function GameLoopScreen() {
   const hasPlannedMovement = pathPreviewTiles.length > 1;
   const actionStateLabel =
     run?.status === "active" ? (run.turnState.player.actionAvailable ? "Available" : "Spent") : "N/A";
+  const bonusActionStateLabel =
+    run?.status === "active" ? (run.turnState.player.bonusActionAvailable ? "Available" : "Spent") : "N/A";
   const movementStateLabel =
     run?.status === "active"
       ? `${run.turnState.player.movementRemainingTiles}/${run.turnState.player.movementAllowanceTiles}`
@@ -336,7 +318,7 @@ export function GameLoopScreen() {
       <header className="topbar">
         <h1>The Tower MVP Slice</h1>
         <p>
-          Move with WASD/arrows or click-to-step. F attack, G pick up loot, E extract, Space end turn. Panels: C character, I inventory, J journal, L log.
+          Click tiles to move. Click enemies to target and face them. Space confirm move, Enter/E end turn, F attack, G pick up loot.
         </p>
       </header>
 
@@ -393,6 +375,7 @@ export function GameLoopScreen() {
                   Move: {run.turnState.player.movementRemainingTiles}/{run.turnState.player.movementAllowanceTiles}
                 </div>
                 <div className="hud-item">Action: {run.turnState.player.actionAvailable ? "ready" : "spent"}</div>
+                <div className="hud-item">Bonus: {run.turnState.player.bonusActionAvailable ? "ready" : "spent"}</div>
                 <div className="hud-item torch-inline">
                   <span>
                     Torch: {run.player.torch.fuelCurrent.toFixed(1)}/{run.player.torch.fuelMax.toFixed(1)}
@@ -426,6 +409,10 @@ export function GameLoopScreen() {
                   <strong>{actionStateLabel}</strong>
                 </div>
                 <div className="turn-status-block">
+                  <span className="turn-status-label">Bonus Action</span>
+                  <strong>{bonusActionStateLabel}</strong>
+                </div>
+                <div className="turn-status-block">
                   <span className="turn-status-label">Round</span>
                   <strong>{run.turnState.roundNumber}</strong>
                 </div>
@@ -433,63 +420,23 @@ export function GameLoopScreen() {
                   {isPlayerPhase ? "You can move/act now. End turn with Space or button." : "Wait for enemy phase to resolve."}
                 </div>
               </div>
+              <div className="combat-main-layout">
+                <PlayerPanel
+                  player={run.player}
+                  turnState={run.turnState}
+                  itemTemplates={bootstrapData?.itemTemplates ?? []}
+                  xpTable={bootstrapData?.xpTable ?? null}
+                />
 
-              <div className="game-main-row">
-                <div className="drawer-stage">
-                  <aside className={`edge-drawer left ${activeLeftTab ? "is-open" : ""}`}>
-                    <div className="edge-drawer-inner">
-                      {activeLeftTab === "inventory" && bootstrapData && (
-                        <section className="panel edge-panel-content">
-                          <div className="edge-panel-header">
-                            <h3>Inventory</h3>
-                            <button type="button" onClick={() => setActiveLeftTab(null)}>
-                              Close [I]
-                            </button>
-                          </div>
-                          <div className="edge-panel-scroll">
-                            <InventoryPanel player={run.player} itemTemplates={bootstrapData.itemTemplates} />
-                          </div>
-                        </section>
-                      )}
-                      {activeLeftTab === "character" && bootstrapData && (
-                        <section className="panel edge-panel-content">
-                          <div className="edge-panel-header">
-                            <h3>Character</h3>
-                            <button type="button" onClick={() => setActiveLeftTab(null)}>
-                              Close [C]
-                            </button>
-                          </div>
-                          <div className="edge-panel-scroll">
-                            <PlayerInfoPanel
-                              player={run.player}
-                              itemTemplates={bootstrapData.itemTemplates}
-                              xpTable={bootstrapData.xpTable}
-                            />
-                          </div>
-                        </section>
-                      )}
-                    </div>
-                  </aside>
-
-                  <div className="edge-tab-rail left">
-                    {LEFT_DRAWER_TABS.map((tab) => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        className={`edge-tab${activeLeftTab === tab.id ? " is-active" : ""}`}
-                        onClick={() => setActiveLeftTab((current) => (current === tab.id ? null : tab.id))}
-                      >
-                        {tab.label} [{tab.hotkey}]
-                      </button>
-                    ))}
-                  </div>
-
+                <div className="combat-center-column">
                   <div className="game-viewport-section">
                     <GameCanvas
                       run={run}
                       destinationTile={clickMoveTarget}
                       pathPreviewTiles={pathPreviewTiles}
                       destinationReachableThisTurn={pathReachableThisTurn}
+                      enemyTemplatesById={enemyTemplatesById}
+                      targetedEnemyInstanceId={targetedEnemyInstanceId}
                       onTileClick={(x, y) => {
                         if (!run || run.status !== "active") return;
                         if (isExecutingPlannedMove) return;
@@ -497,13 +444,34 @@ export function GameLoopScreen() {
                         if (!floor) return;
                         const start = run.player.position;
                         const targetTile = getTile(floor.tiles, floor.width, x, y);
+                        const distance = Math.abs(start.x - x) + Math.abs(start.y - y);
+
+                        if (targetTile?.occupiedByLootIds && targetTile.occupiedByLootIds.length > 0 && distance <= 1) {
+                          pickupLootFromTile(x, y);
+                          clearMovementPlan();
+                          return;
+                        }
+
+                        if (targetTile?.occupiedByEnemyId) {
+                          const enemy = floor.enemies.find((e) => e.instanceId === targetTile.occupiedByEnemyId && e.state !== "dead");
+                          if (enemy) {
+                            const newFacing = facingFromDelta({ x: x - start.x, y: y - start.y }, run.player.facing);
+                            setPlayerFacing(newFacing);
+                            setTargetedEnemyInstanceId(enemy.instanceId);
+                            clearMovementPlan();
+                            return;
+                          }
+                        }
+
+                        setTargetedEnemyInstanceId(null);
                         setClickMoveTarget({ x, y });
+
                         if (start.x === x && start.y === y) {
                           setPathPreviewTiles([{ x, y }]);
                           setPathReachableThisTurn(true);
                           return;
                         }
-                        if (!targetTile || !targetTile.walkable || targetTile.occupiedByEnemyId) {
+                        if (!targetTile || !targetTile.walkable) {
                           setPathPreviewTiles([start, { x, y }]);
                           setPathReachableThisTurn(false);
                           return;
@@ -522,185 +490,121 @@ export function GameLoopScreen() {
                         }
 
                         setPathPreviewTiles(path);
-
                         const movementBudget = run.turnState.player.movementRemainingTiles;
-                        const totalSteps = path.length - 1;
-                        const reachableThisTurn = totalSteps <= movementBudget;
-                        setPathReachableThisTurn(reachableThisTurn);
+                        setPathReachableThisTurn(path.length - 1 <= movementBudget);
                       }}
                     />
-                    <section className="viewport-event-console" aria-live="polite" aria-label="Recent events">
-                      <header className="viewport-event-console-header">Run Events</header>
-                      <div className="viewport-event-console-list">
-                        {viewportEventLog.length === 0 && <div className="viewport-event-empty">No meaningful events yet.</div>}
-                        {viewportEventLog.map((entry, index) => {
-                          const lootMeta = getLootEntryItemMeta(entry);
-                          const itemTemplate =
-                            lootMeta && bootstrapData ? bootstrapData.itemTemplates.find((item) => item.id === lootMeta.itemId) ?? null : null;
-                          return (
-                            <div key={`${entry.id}-${index}`} className={`viewport-event-item is-${entry.category}`}>
-                              <span className="viewport-event-time">{formatLogTimestamp(entry.timestamp)}</span>
-                              <span className="viewport-event-message">
-                                {lootMeta && itemTemplate ? (
-                                  <>
-                                    Picked up {lootMeta.quantity}x{" "}
-                                    <button
-                                      type="button"
-                                      className="viewport-event-item-link"
-                                      onMouseEnter={() => setHoveredConsoleItem(itemTemplate)}
-                                      onMouseLeave={() => setHoveredConsoleItem((current) => (current?.id === itemTemplate.id ? null : current))}
-                                    >
-                                      {itemTemplate.name}
-                                    </button>
-                                    .
-                                  </>
-                                ) : (
-                                  entry.message
-                                )}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {hoveredConsoleItem && (
-                        <aside className="viewport-event-tooltip">
-                          <div className="viewport-event-tooltip-name">{hoveredConsoleItem.name}</div>
-                          {buildTooltipLines(hoveredConsoleItem).map((line) => (
-                            <div key={line} className="viewport-event-tooltip-stat">
-                              {line}
-                            </div>
-                          ))}
-                          <div className="viewport-event-tooltip-flavor">
-                            {hoveredConsoleItem.flavorText ?? "No flavor text."}
-                          </div>
-                        </aside>
-                      )}
-                    </section>
                   </div>
 
-                  <div className="edge-tab-rail right">
-                    {RIGHT_DRAWER_TABS.map((tab) => (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        className={`edge-tab${activeRightTab === tab.id ? " is-active" : ""}`}
-                        onClick={() => setActiveRightTab((current) => (current === tab.id ? null : tab.id))}
-                      >
-                        {tab.label} [{tab.hotkey}]
-                      </button>
-                    ))}
-                  </div>
-
-                  <aside className={`edge-drawer right ${activeRightTab ? "is-open" : ""}`}>
-                    <div className="edge-drawer-inner">
-                      {activeRightTab === "journal" && (
-                        <section className="panel edge-panel-content">
-                          <div className="edge-panel-header">
-                            <h3>Journal</h3>
-                            <button type="button" onClick={() => setActiveRightTab(null)}>
-                              Close [J]
-                            </button>
-                          </div>
-                          <div className="edge-panel-scroll">
-                            <div className="journal-list">
-                              {JOURNAL_PLACEHOLDER_ENTRIES.map((entry) => (
-                                <div key={entry} className="journal-entry">
-                                  {entry}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </section>
-                      )}
-                      {activeRightTab === "log" && (
-                        <section className="panel edge-panel-content action-log-panel">
-                          <div className="edge-panel-header">
-                            <h3>Action Log</h3>
-                            <div className="action-log-controls">
-                              <button type="button" onClick={() => setActiveRightTab(null)}>
-                                Close [L]
-                              </button>
-                              <button type="button" onClick={clearActionLog}>
-                                Clear
-                              </button>
-                            </div>
-                          </div>
-                          <div className="edge-panel-scroll">
-                            <div className="action-log-filters">
-                              {(["all", "combat", "loot", "inventory", "system"] as const).map((filter) => (
-                                <button
-                                  key={filter}
-                                  type="button"
-                                  className={`log-filter-button${logFilter === filter ? " is-active" : ""}`}
-                                  onClick={() => setLogFilter(filter)}
-                                >
-                                  {filter}
-                                </button>
-                              ))}
-                            </div>
-                            <div
-                              ref={actionLogListRef}
-                              className="action-log-list"
-                              onScroll={(event) => {
-                                const target = event.currentTarget;
-                                const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
-                                stickLogToBottomRef.current = distanceFromBottom <= 8;
-                              }}
-                            >
-                              {filteredActionLog.length === 0 && (
-                                <div className="action-log-empty">No log entries for this filter.</div>
+                  <section className="run-events-panel panel" aria-live="polite" aria-label="Run events">
+                    <header className="run-events-header">Run Events</header>
+                    <div
+                      ref={actionLogListRef}
+                      className="run-events-list"
+                      onScroll={(event) => {
+                        const target = event.currentTarget;
+                        const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
+                        stickLogToBottomRef.current = distanceFromBottom <= 8;
+                      }}
+                    >
+                      {viewportEventLog.length === 0 && <div className="viewport-event-empty">No meaningful events yet.</div>}
+                      {viewportEventLog.map((entry, index) => {
+                        const lootMeta = getLootEntryItemMeta(entry);
+                        const itemTemplate =
+                          lootMeta && bootstrapData ? bootstrapData.itemTemplates.find((item) => item.id === lootMeta.itemId) ?? null : null;
+                        return (
+                          <div key={`${entry.id}-${index}`} className={`viewport-event-item is-${entry.category}`}>
+                            <span className="viewport-event-time">{formatLogTimestamp(entry.timestamp)}</span>
+                            <span className="viewport-event-message">
+                              {lootMeta && itemTemplate ? (
+                                <>
+                                  Picked up {lootMeta.quantity}x{" "}
+                                  <button
+                                    type="button"
+                                    className="viewport-event-item-link"
+                                    onMouseEnter={() => setHoveredConsoleItem(itemTemplate)}
+                                    onMouseLeave={() => setHoveredConsoleItem((current) => (current?.id === itemTemplate.id ? null : current))}
+                                  >
+                                    {itemTemplate.name}
+                                  </button>
+                                  .
+                                </>
+                              ) : (
+                                entry.message
                               )}
-                              {filteredActionLog.map((entry, index) => (
-                                <div key={`${entry.id}-${index}`} className="action-log-entry">
-                                  {formatActionLogEntry(entry)}
-                                </div>
-                              ))}
-                            </div>
+                            </span>
                           </div>
-                        </section>
-                      )}
+                        );
+                      })}
                     </div>
-                  </aside>
+                    {hoveredConsoleItem && (
+                      <aside className="viewport-event-tooltip">
+                        <div className="viewport-event-tooltip-name">{hoveredConsoleItem.name}</div>
+                        {buildTooltipLines(hoveredConsoleItem).map((line) => (
+                          <div key={line} className="viewport-event-tooltip-stat">
+                            {line}
+                          </div>
+                        ))}
+                        <div className="viewport-event-tooltip-flavor">
+                          {hoveredConsoleItem.flavorText ?? "No flavor text."}
+                        </div>
+                      </aside>
+                    )}
+                  </section>
                 </div>
+
+                <EnemyPanel
+                  enemies={torchLitEnemies}
+                  enemyTemplatesById={enemyTemplatesById}
+                  playerPosition={run.player.position}
+                  targetedEnemyInstanceId={targetedEnemyInstance?.instanceId ?? null}
+                />
+              </div>
+              <div className="controls game-controls-row">
+                <div className="action-group">
+                  <button onClick={playerAttack} disabled={!canUseTurnAction}>
+                    Attack
+                  </button>
+                  <button onClick={pickupLoot} disabled={!canUseTurnAction}>
+                    Pick Up Loot
+                  </button>
+                  <button onClick={tryExtract} disabled={!canUseExtract}>
+                    Extract
+                  </button>
+                  <button onClick={() => setShowLoadoutOverlay(true)} disabled={!bootstrapData}>
+                    Loadout
+                  </button>
+                </div>
+                <div className="action-group">
+                  <button
+                    onClick={() => {
+                      void confirmMovementPlan();
+                    }}
+                    disabled={!isPlayerPhase || !canMoveTile || !hasPlannedMovement || !pathReachableThisTurn || isExecutingPlannedMove}
+                  >
+                    Confirm Move [Space]
+                  </button>
+                  <button onClick={clearMovementPlan} disabled={isExecutingPlannedMove || (!hasPlannedMovement && !clickMoveTarget)}>
+                    Cancel Move [Esc]
+                  </button>
+                </div>
+                <button
+                  className="end-turn-button"
+                  onClick={endTurn}
+                  disabled={!isPlayerPhase}
+                  title="End your turn and resolve enemy phase"
+                >
+                  End Turn [Enter/E]
+                </button>
               </div>
 
-              <div className="controls game-controls-row">
-                <button onClick={() => movePlayerByDelta(0, -1)} disabled={!canMoveTile || isExecutingPlannedMove}>
-                  Up
-                </button>
-                <button onClick={() => movePlayerByDelta(-1, 0)} disabled={!canMoveTile || isExecutingPlannedMove}>
-                  Left
-                </button>
-                <button onClick={() => movePlayerByDelta(1, 0)} disabled={!canMoveTile || isExecutingPlannedMove}>
-                  Right
-                </button>
-                <button onClick={() => movePlayerByDelta(0, 1)} disabled={!canMoveTile || isExecutingPlannedMove}>
-                  Down
-                </button>
-                <button onClick={playerAttack} disabled={!canUseTurnAction}>
-                  Attack
-                </button>
-                <button onClick={pickupLoot} disabled={!canUseTurnAction}>
-                  Pick Up Loot
-                </button>
-                <button onClick={tryExtract} disabled={!canUseExtract}>
-                  Extract
-                </button>
-                <button
-                  onClick={() => {
-                    void confirmMovementPlan();
-                  }}
-                  disabled={!isPlayerPhase || !canMoveTile || !hasPlannedMovement || !pathReachableThisTurn || isExecutingPlannedMove}
-                >
-                  Confirm Move [Enter]
-                </button>
-                <button onClick={clearMovementPlan} disabled={isExecutingPlannedMove || (!hasPlannedMovement && !clickMoveTarget)}>
-                  Cancel Move [Esc]
-                </button>
-                <button onClick={endTurn} disabled={!isPlayerPhase} title="End your turn and resolve enemy phase">
-                  End Turn [Space]
-                </button>
-              </div>
+              {showLoadoutOverlay && bootstrapData && (
+                <LoadoutOverlay
+                  player={run.player}
+                  itemTemplates={bootstrapData.itemTemplates}
+                  onClose={() => setShowLoadoutOverlay(false)}
+                />
+              )}
             </div>
           )}
 
@@ -736,3 +640,4 @@ export function GameLoopScreen() {
     </main>
   );
 }
+

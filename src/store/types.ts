@@ -46,4 +46,5 @@ export interface TurnUiStateSnapshot {
   movementRemainingTiles: number;
   movementAllowanceTiles: number;
   actionAvailable: boolean;
+  bonusActionAvailable: boolean;
 }

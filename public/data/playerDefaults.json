@@ -2,27 +2,51 @@
   "baseStats": {
     "level": 1,
     "xp": 0,
-    "hp": 100,
+    "hp": 75,
     "stamina": 50,
-    "attack": 10,
-    "defense": 5,
+    "attack": 5,
+    "defense": 1,
+    "hitChance": 0.75,
+    "critMultiplier": 1.5,
     "movementFeet": 30,
     "carryWeight": 50
   },
   "equipment": {
-    "mainHand": "weapon_rusty_sword",
-    "offHand": null,
-    "helmet": null,
-    "chest": "armor_worn_chest",
-    "legs": null,
-    "feet": null
+    "mainHand": "weapon_starter_shortsword",
+    "offHand": "shield_starter_wooden",
+    "helmet": "armor_starter_leather_hood",
+    "chest": "armor_starter_leather_chest",
+    "legs": "armor_starter_leather_legs",
+    "feet": "armor_starter_leather_boots"
   },
   "inventory": {
     "backpack": {
       "w": 4,
       "h": 3
     },
-    "beltSlots": 3
+    "beltSlots": 3,
+    "startingItems": [
+      {
+        "itemId": "consumable_small_potion",
+        "quantity": 5
+      },
+      {
+        "itemId": "consumable_field_bandage",
+        "quantity": 3
+      },
+      {
+        "itemId": "consumable_torch_oil",
+        "quantity": 2
+      },
+      {
+        "itemId": "mat_scrap_iron",
+        "quantity": 8
+      },
+      {
+        "itemId": "debug_tower_sigil",
+        "quantity": 5
+      }
+    ]
   },
   "torch": {
     "fuelMax": 120,

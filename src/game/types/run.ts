@@ -25,6 +25,7 @@ export interface PlayerTurnState {
   movementAllowanceTiles: number;
   movementRemainingTiles: number;
   actionAvailable: boolean;
+  bonusActionAvailable: boolean;
 }
 
 export interface EnemyTurnState {
@@ -67,6 +68,7 @@ export function initializeRunTurnState(player: PlayerState): RunTurnState {
       movementAllowanceTiles,
       movementRemainingTiles: movementAllowanceTiles,
       actionAvailable: true,
+      bonusActionAvailable: true,
     },
     enemies: {
       pendingEnemyIds: [],

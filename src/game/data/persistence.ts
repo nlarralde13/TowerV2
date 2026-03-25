@@ -69,7 +69,9 @@ function createEmptyPlayerStatSet(): PlayerState["baseStats"] {
     stamina: 0,
     attack: 0,
     defense: 0,
+    hitChance: 0,
     critChance: 0,
+    critMultiplier: 0,
     dodgeChance: 0,
     hpRegen: 0,
     staminaRegen: 0,
@@ -115,13 +117,16 @@ function isItemInstance(value: unknown): boolean {
     return false;
   }
   if (container === "inventory" || container === "ground") {
+    if (container === "inventory") {
+      return true;
+    }
     return isFiniteNumber(position.x) && isFiniteNumber(position.y);
   }
   if (container === "equipment") {
     return typeof position.slot === "string";
   }
   if (container === "belt") {
-    return isFiniteNumber(position.slotIndex);
+    return isFiniteNumber(position.slot) || isFiniteNumber(position.slotIndex);
   }
   return false;
 }
@@ -257,7 +262,8 @@ function isRunTurnStateSnapshot(value: unknown): value is RunState["turnState"] 
   if (
     !isFiniteNumber(value.player.movementAllowanceTiles) ||
     !isFiniteNumber(value.player.movementRemainingTiles) ||
-    typeof value.player.actionAvailable !== "boolean"
+    typeof value.player.actionAvailable !== "boolean" ||
+    (typeof value.player.bonusActionAvailable !== "undefined" && typeof value.player.bonusActionAvailable !== "boolean")
   ) {
     return false;
   }
@@ -398,6 +404,8 @@ function normalizeRunTurnState(
   }
   const movementAllowanceTiles = Math.max(0, Math.floor(turnState.player.movementAllowanceTiles));
   const movementRemainingTiles = Math.max(0, Math.min(movementAllowanceTiles, Math.floor(turnState.player.movementRemainingTiles)));
+  const bonusActionAvailable =
+    typeof turnState.player.bonusActionAvailable === "boolean" ? turnState.player.bonusActionAvailable : true;
   return {
     roundNumber: Math.max(1, Math.floor(turnState.roundNumber)),
     phase: turnState.phase,
@@ -405,6 +413,7 @@ function normalizeRunTurnState(
       movementAllowanceTiles,
       movementRemainingTiles,
       actionAvailable: turnState.player.actionAvailable,
+      bonusActionAvailable,
     },
     enemies: {
       pendingEnemyIds: turnState.enemies.pendingEnemyIds,

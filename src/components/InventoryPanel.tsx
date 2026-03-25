@@ -107,6 +107,9 @@ export function InventoryPanel({ player, itemTemplates }: InventoryPanelProps) {
     if (typeof template.stats?.torchFuelRestore === "number" && template.stats.torchFuelRestore > 0) {
       lines.push(`+${template.stats.torchFuelRestore} Torch Fuel`);
     }
+    if (typeof template.stats?.hpRestore === "number" && template.stats.hpRestore > 0) {
+      lines.push(`+${template.stats.hpRestore} HP`);
+    }
     if (lines.length === 0) {
       lines.push("No direct stat modifiers");
     }

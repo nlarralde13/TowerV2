@@ -23,6 +23,7 @@ import { persistRunTransition } from "./persistenceSlice";
 
 export interface CombatSlice {
   movePlayerByDelta: (deltaX: number, deltaY: number) => void;
+  setPlayerFacing: (facing: RunState["player"]["facing"]) => void;
   playerAttack: () => void;
   endTurn: () => void;
 }
@@ -157,6 +158,7 @@ function startNextPlayerTurn(run: RunState): RunState {
         movementAllowanceTiles: nextMovementAllowanceTiles,
         movementRemainingTiles: nextMovementAllowanceTiles,
         actionAvailable: true,
+        bonusActionAvailable: true,
       },
       enemies: {
         pendingEnemyIds: [],
@@ -172,6 +174,14 @@ export const createCombatSlice: StateCreator<
   [],
   CombatSlice
 > = (set, get) => ({
+  setPlayerFacing: (facing) => {
+    const { run, bootstrapData } = get();
+    if (!run || !bootstrapData || run.status !== "active") return;
+    const updatedRun: RunState = { ...run, player: { ...run.player, facing } };
+    const persisted = persistRunTransition(updatedRun, get().profile, bootstrapData);
+    set({ run: updatedRun, hasSavedRun: persisted.hasSavedRun, profile: persisted.profile });
+  },
+
   movePlayerByDelta: (deltaX, deltaY) => {
     const { run, bootstrapData } = get();
     if (!run || !bootstrapData || run.status !== "active") return;
@@ -271,7 +281,7 @@ export const createCombatSlice: StateCreator<
 
     if (!attacked.attacked) {
       set((state) => ({
-        actionLog: withActionLogs(state.actionLog, [{ category: "combat", message: "Attack missed. No enemy in front." }]),
+        actionLog: withActionLogs(state.actionLog, [{ category: "combat", message: "No enemy in range to attack." }]),
       }));
       return;
     }
@@ -280,11 +290,31 @@ export const createCombatSlice: StateCreator<
     nextRun.floors[nextRun.currentFloor] = syncFloorOccupancy(nextRun.floors[nextRun.currentFloor]);
 
     const persisted = persistRunTransition(nextRun, get().profile, bootstrapData);
+
+    // Build detailed combat log
+    const combatEvents: ActionLogEntryInput[] = [];
+    if (!attacked.hit) {
+      combatEvents.push({ category: "combat", message: `Missed ${attacked.targetName ?? "the enemy"}!` });
+    } else {
+      const critTag = attacked.isCrit ? " ★ CRIT" : "";
+      combatEvents.push({
+        category: "combat",
+        level: attacked.isCrit ? "warning" : "info",
+        message: `Hit ${attacked.targetName ?? "enemy"} for ${attacked.damage ?? 0} damage${critTag}.`,
+      });
+      if (attacked.targetDied) {
+        combatEvents.push({
+          category: "combat",
+          message: `${attacked.targetName ?? "Enemy"} was defeated!`,
+        });
+      }
+    }
+
     set((state) => ({
       run: nextRun,
       hasSavedRun: persisted.hasSavedRun,
       profile: persisted.profile,
-      actionLog: withActionLogs(state.actionLog, [{ category: "combat", message: "Attack hit. Action spent." }]),
+      actionLog: withActionLogs(state.actionLog, combatEvents),
     }));
   },
 

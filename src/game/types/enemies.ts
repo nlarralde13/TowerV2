@@ -10,6 +10,7 @@ export interface EnemyTemplate {
   stats: {
     hp: number;
     damage: number;
+    defense: number;    // Flat damage reduction applied against player attacks
     speed: number;
     attackSpeed: number;
     attackRange: number;

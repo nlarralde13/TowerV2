@@ -4,7 +4,12 @@ import { getTile, inBounds } from "../world";
 
 export interface AttackResult {
   run: RunState;
-  attacked: boolean;
+  attacked: boolean;   // true if an attack action was attempted (hit or miss)
+  hit?: boolean;       // true = damage dealt; false = missed; undefined = no target found
+  damage?: number;     // net damage dealt on a successful hit
+  isCrit?: boolean;    // true if the hit was a critical strike
+  targetName?: string; // display name of the enemy that was targeted
+  targetDied?: boolean;// true if the target was killed by this hit
 }
 
 export interface EnemyTurnResult {
@@ -63,9 +68,42 @@ export function playerLightAttack(params: {
     return { run, attacked: false };
   }
 
-  const playerDamage = run.player.totalStats.attack;
-  const enemyDefense = enemyTemplate.tier === "elite" || enemyTemplate.tier === "boss" ? 3 : 1;
-  const finalDamage = applyDamage(playerDamage, enemyDefense);
+  // ── Turn-based combat resolution ────────────────────────────────────────────
+  // Formula: hit check → crit check → damage roll → apply enemy defense.
+  //
+  // Expected DPR = hitChance × avgHitDmg × (1 + critChance × (critMult − 1))
+  //
+  // Balance targets (standard enemy = ~4 rounds to kill):
+  //   Weak  (normal, def 0):   ~2–3 rounds
+  //   Std   (normal, def 1):   ~3–5 rounds  ← core target
+  //   Vet   (veteran, def 1):  ~3–4 rounds (higher dmg pressure, less hp)
+  //   Elite (elite, def 3):    ~5–8 rounds
+  //   Boss  (boss, def 5):     8+ rounds
+  // ────────────────────────────────────────────────────────────────────────────
+  const playerStats = run.player.totalStats;
+
+  // Hit check — player.hitChance is 0.0–1.0 (base 0.75 + gear)
+  const hit = Math.random() < playerStats.hitChance;
+  if (!hit) {
+    // Miss: action is still consumed, but no damage dealt
+    return {
+      attacked: true,
+      hit: false,
+      targetName: enemyTemplate.name,
+      run,
+    };
+  }
+
+  // Crit check — critChance is 0.0–1.0 (weapon provides base, e.g. 0.03)
+  const crit = Math.random() < playerStats.critChance;
+
+  // Damage — attack stat is a flat value (base + weapon average via weaponAttackBonus)
+  const rawDamage = playerStats.attack;
+  const critDamage = crit ? Math.floor(rawDamage * playerStats.critMultiplier) : rawDamage;
+
+  // Enemy defense — defined per template (not hardcoded by tier)
+  const enemyDefense = enemyTemplate.stats.defense;
+  const finalDamage = applyDamage(critDamage, enemyDefense);
 
   const updatedEnemies = floor.enemies.map((enemy) => {
     if (enemy.instanceId !== target.instanceId) {
@@ -85,8 +123,15 @@ export function playerLightAttack(params: {
     .map((enemy) => enemy.instanceId)
     .filter((id) => !run.defeatedEnemyIds.includes(id));
 
+  const targetDied = updatedEnemies.find((e) => e.instanceId === target.instanceId)?.state === "dead";
+
   return {
     attacked: true,
+    hit: true,
+    damage: finalDamage,
+    isCrit: crit,
+    targetName: enemyTemplate.name,
+    targetDied,
     run: {
       ...run,
       defeatedEnemyIds: [...run.defeatedEnemyIds, ...defeatedEnemyIds],

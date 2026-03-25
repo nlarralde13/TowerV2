@@ -11,7 +11,10 @@ export interface PlayerStatSet {
   stamina: number;
   attack: number;
   defense: number;
-  critChance: number;
+  // --- Combat resolution stats ---
+  hitChance: number;      // Probability to land an attack (0.0–1.0). Base 0.75.
+  critChance: number;     // Probability a hit becomes a crit (0.0–1.0). Base 0 + weapon bonus.
+  critMultiplier: number; // Damage multiplier on a crit (e.g. 1.5 = 150%). Base 1.5.
   dodgeChance: number;
   hpRegen: number;
   staminaRegen: number;
@@ -29,6 +32,8 @@ export interface PlayerDefaults {
     stamina: number;
     attack: number;
     defense: number;
+    hitChance: number;      // Base hit probability (0.0–1.0)
+    critMultiplier: number; // Base crit damage multiplier (e.g. 1.5)
     movementFeet: number;
     carryWeight: number;
   };
@@ -36,6 +41,10 @@ export interface PlayerDefaults {
   inventory: {
     backpack: Size2D;
     beltSlots: number;
+    startingItems?: Array<{
+      itemId: ID;
+      quantity: number;
+    }>;
   };
   torch: TorchConfig;
   unlockedSkills: ID[];

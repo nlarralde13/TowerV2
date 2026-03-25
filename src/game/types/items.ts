@@ -13,6 +13,7 @@ export interface ItemTemplate {
   equipSlot?: EquipSlot;
   flavorText?: string;
   stats?: {
+    hpRestore?: number;
     hpBonus?: number;
     attackBonus?: number;
     defenseBonus?: number;

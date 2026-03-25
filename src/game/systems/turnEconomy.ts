@@ -12,17 +12,22 @@ export type InteractionId =
   | "unequip"
   | "use_key";
 
-export type InteractionCostKind = "movement" | "action" | "full_turn" | "free";
+export type InteractionCostKind = "movement" | "action" | "bonus_action" | "full_turn" | "free";
 
 export interface InteractionCostRule {
   kind: InteractionCostKind;
   movementTilesCost: number;
   actionCost: boolean;
+  bonusActionCost: boolean;
   consumeAllRemainingMovement: boolean;
   description: string;
 }
 
-export type TurnEconomyFailureReason = "not_player_phase" | "no_action_available" | "insufficient_movement";
+export type TurnEconomyFailureReason =
+  | "not_player_phase"
+  | "no_action_available"
+  | "no_bonus_action_available"
+  | "insufficient_movement";
 
 export interface TurnEconomyGateResult {
   allowed: boolean;
@@ -35,6 +40,7 @@ export interface TurnEconomyGateResult {
  * Kinds:
  * - movement: consumes movement tiles only
  * - action: consumes the turn action only
+ * - bonus_action: consumes the turn bonus action only
  * - full_turn: consumes action and clears remaining movement
  * - free: does not consume movement or action
  */
@@ -43,6 +49,7 @@ export const INTERACTION_COST_RULES: Record<InteractionId, InteractionCostRule> 
     kind: "movement",
     movementTilesCost: 1,
     actionCost: false,
+    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Move one orthogonal tile.",
   },
@@ -50,6 +57,7 @@ export const INTERACTION_COST_RULES: Record<InteractionId, InteractionCostRule> 
     kind: "action",
     movementTilesCost: 0,
     actionCost: true,
+    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Melee or ranged attack.",
   },
@@ -57,6 +65,7 @@ export const INTERACTION_COST_RULES: Record<InteractionId, InteractionCostRule> 
     kind: "action",
     movementTilesCost: 0,
     actionCost: true,
+    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Pick up loot from ground tile.",
   },
@@ -64,6 +73,7 @@ export const INTERACTION_COST_RULES: Record<InteractionId, InteractionCostRule> 
     kind: "action",
     movementTilesCost: 0,
     actionCost: true,
+    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Open chest interactable.",
   },
@@ -71,6 +81,7 @@ export const INTERACTION_COST_RULES: Record<InteractionId, InteractionCostRule> 
     kind: "action",
     movementTilesCost: 0,
     actionCost: true,
+    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Open door interactable.",
   },
@@ -78,20 +89,23 @@ export const INTERACTION_COST_RULES: Record<InteractionId, InteractionCostRule> 
     kind: "full_turn",
     movementTilesCost: 0,
     actionCost: true,
+    bonusActionCost: false,
     consumeAllRemainingMovement: true,
     description: "Extract from floor and end run.",
   },
   consume_item: {
-    kind: "action",
+    kind: "bonus_action",
     movementTilesCost: 0,
-    actionCost: true,
+    actionCost: false,
+    bonusActionCost: true,
     consumeAllRemainingMovement: false,
-    description: "Consume usable item (for MVP, torch fuel consumables).",
+    description: "Consume usable item (bonus action).",
   },
   equip: {
     kind: "free",
     movementTilesCost: 0,
     actionCost: false,
+    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Equip item to a valid slot.",
   },
@@ -99,6 +113,7 @@ export const INTERACTION_COST_RULES: Record<InteractionId, InteractionCostRule> 
     kind: "free",
     movementTilesCost: 0,
     actionCost: false,
+    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Unequip item back to inventory.",
   },
@@ -106,6 +121,7 @@ export const INTERACTION_COST_RULES: Record<InteractionId, InteractionCostRule> 
     kind: "action",
     movementTilesCost: 0,
     actionCost: true,
+    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Use key on locked interactable.",
   },
@@ -121,6 +137,9 @@ export function canPerformInteraction(
   const rule = INTERACTION_COST_RULES[interactionId];
   if (rule.actionCost && !run.turnState.player.actionAvailable) {
     return { allowed: false, reason: "no_action_available" };
+  }
+  if (rule.bonusActionCost && !run.turnState.player.bonusActionAvailable) {
+    return { allowed: false, reason: "no_bonus_action_available" };
   }
   if (rule.movementTilesCost > run.turnState.player.movementRemainingTiles) {
     return { allowed: false, reason: "insufficient_movement" };
@@ -142,6 +161,7 @@ export function applyInteractionCost(run: RunState, interactionId: InteractionId
         ...run.turnState.player,
         movementRemainingTiles,
         actionAvailable: rule.actionCost ? false : run.turnState.player.actionAvailable,
+        bonusActionAvailable: rule.bonusActionCost ? false : run.turnState.player.bonusActionAvailable,
       },
     },
   };
@@ -156,6 +176,9 @@ export function explainTurnEconomyFailure(
   }
   if (reason === "no_action_available") {
     return "Action already used this turn.";
+  }
+  if (reason === "no_bonus_action_available") {
+    return "Bonus action already used this turn.";
   }
   return "Not enough movement remaining.";
 }

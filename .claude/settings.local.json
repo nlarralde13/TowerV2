@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Read(//c/Users/Nick/Downloads/**)",
+      "Bash(copy \"c:\\\\Users\\\\Nick\\\\Desktop\\\\projects\\\\TowerV2\\\\The_Tower_Combat_Design_Doc.md\" \"c:\\\\Users\\\\Nick\\\\Downloads\\\\The_Tower_Combat_Design_Doc.md\")"
+    ]
+  }
+}
