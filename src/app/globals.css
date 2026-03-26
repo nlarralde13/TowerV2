@@ -333,6 +333,49 @@ input {
   scrollbar-width: thin;
 }
 
+.enemy-panel {
+  min-height: 0;
+}
+
+.enemy-panel-sections {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0.55rem;
+  min-height: 0;
+  height: 100%;
+}
+
+.enemy-panel-section {
+  min-height: 0;
+  border: 1px solid rgba(125, 43, 63, 0.55);
+  border-radius: 8px;
+  background: rgba(16, 6, 10, 0.8);
+  padding: 0.45rem 0.5rem;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.35rem;
+}
+
+.enemy-panel-section h3 {
+  margin: 0;
+}
+
+.journal-section .journal-list {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding-right: 0.1rem;
+}
+
+.journal-entry strong {
+  display: block;
+  margin-bottom: 0.18rem;
+}
+
+.journal-entry p {
+  margin: 0;
+}
+
 .enemy-card {
   border: 1px solid rgba(139, 41, 64, 0.5);
   border-radius: 8px;
@@ -1157,6 +1200,321 @@ button.toggle-active {
   font-style: italic;
 }
 
+.start-menu-shell {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.start-menu-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(8, 4, 6, 0.82), rgba(3, 2, 4, 0.94)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(178, 56, 80, 0.08) 0px,
+      rgba(178, 56, 80, 0.08) 2px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0) 4px
+    );
+  image-rendering: pixelated;
+}
+
+.start-menu-panel {
+  position: relative;
+  z-index: 1;
+  width: min(680px, 96vw);
+  border: 3px solid #b53a57;
+  background: linear-gradient(180deg, #1d0b12, #0d060a);
+  box-shadow: 0 0 0 3px #4a1826, 0 16px 28px rgba(0, 0, 0, 0.5);
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.start-menu-title-wrap {
+  border: 2px solid #6f2437;
+  background: linear-gradient(180deg, #33121e, #190a11);
+  padding: 0.85rem 0.9rem;
+  text-align: center;
+}
+
+.start-menu-kicker {
+  margin: 0;
+  font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+  font-size: 0.58rem;
+  color: #edc0cb;
+  letter-spacing: 0.04em;
+}
+
+.start-menu-title {
+  margin: 0.55rem 0 0;
+  font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+  font-size: clamp(1rem, 3.3vw, 1.55rem);
+  color: #ffd8e2;
+  text-shadow: 2px 2px 0 #5f1d2f, 4px 4px 0 #2b0c16;
+  letter-spacing: 0.06em;
+}
+
+.start-menu-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.start-menu-button {
+  width: 100%;
+  border: 2px solid #8f3148;
+  border-radius: 0;
+  background: linear-gradient(180deg, #572033, #2f111c);
+  color: #ffe5eb;
+  padding: 0.65rem 0.7rem;
+  text-align: left;
+  font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: transform 80ms steps(2), border-color 80ms steps(2), background 80ms steps(2);
+}
+
+.start-menu-button:hover:not(:disabled),
+.start-menu-button:focus-visible:not(:disabled) {
+  border-color: #ec6e8a;
+  background: linear-gradient(180deg, #7b2a44, #431527);
+  transform: translate(-2px, -2px);
+  outline: none;
+}
+
+.start-menu-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.start-menu-notice {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 2;
+  border: 2px solid #8c3047;
+  background: rgba(18, 8, 12, 0.96);
+  color: #f4d7de;
+  padding: 0.55rem 0.7rem;
+  font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+  font-size: 0.58rem;
+  max-width: min(900px, 95vw);
+  text-align: center;
+}
+
+.home-base-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.home-base-header p {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.town-lobby-panel {
+  gap: 0.95rem;
+  background:
+    linear-gradient(180deg, rgba(34, 10, 18, 0.9), rgba(16, 7, 11, 0.96)),
+    repeating-linear-gradient(
+      0deg,
+      rgba(173, 47, 74, 0.06) 0px,
+      rgba(173, 47, 74, 0.06) 2px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0) 4px
+    );
+}
+
+.town-banner {
+  border: 2px solid #8d2c44;
+  background: linear-gradient(180deg, rgba(39, 12, 20, 0.95), rgba(19, 8, 12, 0.92));
+  box-shadow: inset 0 0 0 2px rgba(47, 12, 22, 0.95);
+  padding: 0.7rem 0.85rem;
+}
+
+.town-banner h2 {
+  margin: 0;
+  font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+  font-size: clamp(0.9rem, 1.8vw, 1.2rem);
+  letter-spacing: 0.04em;
+  color: #ffd3de;
+  text-transform: uppercase;
+}
+
+.town-banner p {
+  margin: 0.35rem 0 0;
+  color: #ddb4bf;
+  font-size: 0.84rem;
+}
+
+.town-grid-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.town-card {
+  min-height: 280px;
+  border: 3px solid #14050c;
+  background: linear-gradient(180deg, rgba(12, 5, 8, 0.95), rgba(5, 2, 4, 0.97));
+  box-shadow: inset 0 0 0 2px rgba(133, 36, 57, 0.55);
+  padding: 0.85rem 0.8rem;
+}
+
+.town-card h3 {
+  margin: 0;
+  font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #ff4d72;
+}
+
+.town-card ul {
+  margin: 0.7rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.town-card li {
+  color: #f5bcc8;
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.town-card-clickable {
+  cursor: pointer;
+  transition: transform 90ms steps(2), box-shadow 90ms steps(2), border-color 90ms steps(2);
+}
+
+.town-card-clickable:hover,
+.town-card-clickable:focus-visible {
+  transform: translate(-2px, -2px);
+  border-color: #3d101e;
+  box-shadow: inset 0 0 0 2px rgba(204, 73, 102, 0.65), 4px 4px 0 rgba(40, 10, 18, 0.9);
+  outline: none;
+}
+
+.town-tower-panel {
+  width: min(860px, 100%);
+  justify-self: center;
+  border: 3px solid #b2314b;
+  background: linear-gradient(180deg, rgba(24, 8, 13, 0.94), rgba(12, 5, 8, 0.98));
+  box-shadow: inset 0 0 0 2px rgba(66, 18, 30, 0.92);
+  padding: 0.95rem 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.town-tower-panel h3 {
+  margin: 0;
+  font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  color: #ffd0da;
+}
+
+.town-profile-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  color: #f6c7d2;
+  font-size: 0.84rem;
+}
+
+.town-seed-row {
+  margin-bottom: 0;
+}
+
+.town-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.town-actions button {
+  font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.town-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(6, 2, 4, 0.78);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.town-modal {
+  width: min(700px, 96vw);
+  border: 3px solid #a0344d;
+  background: linear-gradient(180deg, #1f0a12, #0f0609);
+  box-shadow: 0 0 0 2px #4f1727, 0 16px 28px rgba(0, 0, 0, 0.55);
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.85rem 0.9rem;
+}
+
+.town-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.7rem;
+  border-bottom: 2px solid rgba(128, 38, 61, 0.7);
+  padding-bottom: 0.55rem;
+}
+
+.town-modal-header p {
+  margin: 0;
+  color: #dd9fb0;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.town-modal-header h3 {
+  margin: 0.25rem 0 0;
+  color: #ffd7df;
+  font-family: "Press Start 2P", "VT323", "Courier New", monospace;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+}
+
+.town-modal-content {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.town-modal-content p {
+  margin: 0;
+  color: #f2becc;
+  font-size: 0.94rem;
+  line-height: 1.3;
+}
+
+.town-modal-footer {
+  border-top: 2px solid rgba(128, 38, 61, 0.7);
+  padding-top: 0.55rem;
+  display: flex;
+  justify-content: end;
+}
+
 .inventory-actions {
   display: flex;
   gap: 0.5rem;
@@ -1305,6 +1663,18 @@ button.toggle-active {
     min-height: 220px;
   }
 
+  .town-grid-row {
+    grid-template-columns: 1fr;
+  }
+
+  .town-card {
+    min-height: 0;
+  }
+
+  .town-tower-panel {
+    width: 100%;
+  }
+
   .combat-main-layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
@@ -1362,5 +1732,10 @@ button.toggle-active {
 
   .game-viewport-section {
     min-height: 180px;
+  }
+
+  .town-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }

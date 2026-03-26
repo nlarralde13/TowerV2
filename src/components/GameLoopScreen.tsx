@@ -29,6 +29,7 @@ const EVENT_LOG_IGNORE_PREFIXES = [
 ];
 
 export function GameLoopScreen() {
+  const [activeTownPanel, setActiveTownPanel] = useState<"home" | "market" | "guild" | null>(null);
   const [seed, setSeed] = useState(DEFAULT_SEED);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -60,6 +61,38 @@ export function GameLoopScreen() {
   const tryExtract = useRunStore((state) => state.tryExtract);
   const actionLog = useRunStore((state) => state.actionLog);
   const restart = useRunStore((state) => state.restart);
+
+  const townPanelCopy = useMemo(() => {
+    return {
+      home: {
+        title: "Ash Hearth",
+        subtitle: "Home Quarter",
+        lines: [
+          "Bind your wounds and reclaim your strength before the next descent.",
+          "Vault chests and long-term storage will be kept here.",
+          "Your war journal and active contracts will be tracked here.",
+        ],
+      },
+      market: {
+        title: "The Market",
+        subtitle: "Trade District",
+        lines: [
+          "Fence relics and salvage drawn from The Tower for coin.",
+          "Stock rations, tonics, and expedition tools.",
+          "Rotating merchants and blacklisted wares coming soon.",
+        ],
+      },
+      guild: {
+        title: "The Guild Hall",
+        subtitle: "Craft and Upgrade Wing",
+        lines: [
+          "Forge upgrades and harden your loadout.",
+          "Ranks, guild favors, and bounty board coming soon.",
+          "Long-term run boons and unlock paths are planned.",
+        ],
+      },
+    } as const;
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -331,7 +364,6 @@ export function GameLoopScreen() {
   }, [isExecutingPlannedMove, pathPreviewTiles, run]);
 
   useEffect(() => {
-    if (!run || run.status !== "active") return;
     const timerId = window.setInterval(() => {
       const activeRun = useRunStore.getState().run;
       if (!activeRun || activeRun.status !== "active") return;
@@ -341,43 +373,164 @@ export function GameLoopScreen() {
     return () => {
       window.clearInterval(timerId);
     };
-  }, [endTurn, run]);
+  }, [endTurn]);
 
   return (
     <main className="shell">
       <header className="topbar">
-        <h1>The Tower MVP Slice</h1>
-        <p>
-          Click tiles to move. Click enemies to target and face them. Space confirm move, Q attack, G pick up loot.
-        </p>
+        {!run ? (
+          <>
+            <h1>Town of Terrune</h1>
+            <p>A grim refuge before the descent. Prepare your run, trade, recover, and return to The Tower.</p>
+          </>
+        ) : (
+          <>
+            <h1>The Tower MVP Slice</h1>
+            <p>
+              Click tiles to move. Click enemies to target and face them. Space confirm move, Q attack, G pick up loot.
+            </p>
+          </>
+        )}
       </header>
 
       {loading && <p className="message">Loading game data...</p>}
       {loadError && <p className="message error">Failed to load: {loadError}</p>}
 
       {!loading && !loadError && !run && (
-        <section className="panel game-panel">
-          {profile && (
-            <div className="hud">
-              <div>Profile Level: {profile.player.level}</div>
-              <div>Profile XP: {profile.player.xp}</div>
+        <section className="panel game-panel town-lobby-panel">
+          <div className="town-banner">
+            <h2>Town of Terrune</h2>
+            <p>Dust, blood, iron, and embers. The last safe hall before the dark below.</p>
+          </div>
+
+          <div className="town-grid-row">
+            <article
+              className="town-card town-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTownPanel("home")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setActiveTownPanel("home");
+                }
+              }}
+            >
+              <h3>Home: Ash Hearth</h3>
+              <ul>
+                <li>Recover at the hearth</li>
+                <li>Stash spoils in vault storage</li>
+                <li>Review journal and active contracts</li>
+                <li>More systems coming soon</li>
+              </ul>
+            </article>
+
+            <article
+              className="town-card town-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTownPanel("market")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setActiveTownPanel("market");
+                }
+              }}
+            >
+              <h3>The Market</h3>
+              <ul>
+                <li>Bring up spoils from the depths</li>
+                <li>Trade relics for hard coin</li>
+                <li>Provision for the next descent</li>
+                <li>More stalls coming soon</li>
+              </ul>
+            </article>
+
+            <article
+              className="town-card town-card-clickable"
+              role="button"
+              tabIndex={0}
+              onClick={() => setActiveTownPanel("guild")}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setActiveTownPanel("guild");
+                }
+              }}
+            >
+              <h3>The Guild Hall</h3>
+              <ul>
+                <li>Forge and craft</li>
+                <li>Temper and upgrade gear</li>
+                <li>Guild contracts and renown</li>
+                <li>More rites coming soon</li>
+              </ul>
+            </article>
+          </div>
+
+          <section className="town-tower-panel">
+            <h3>The Tower</h3>
+            {profile && (
+              <div className="town-profile-row">
+                <span>Level: {profile.player.level}</span>
+                <span>XP: {profile.player.xp}</span>
+              </div>
+            )}
+            <div className="form-row town-seed-row">
+              <label htmlFor="seed">Run Seed</label>
+              <input id="seed" value={seed} onChange={(event) => setSeed(event.target.value)} />
+            </div>
+            <div className="town-actions">
+              <button disabled={!bootstrapData || seed.trim().length === 0} onClick={() => startRun(seed.trim())}>
+                Begin Descent
+              </button>
+              <button disabled={!hasSavedRun} onClick={resumeSavedRun}>
+                Resume Descent
+              </button>
+              <button disabled title="Lifetime stats coming soon">
+                Hall of Deeds
+              </button>
+              <button disabled={!hasSavedRun} onClick={clearSavedRun}>
+                Abandon Current Descent
+              </button>
+            </div>
+          </section>
+
+          {activeTownPanel && (
+            <div
+              className="town-modal-backdrop"
+              onClick={() => setActiveTownPanel(null)}
+              role="presentation"
+            >
+              <section
+                className="town-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label={`${townPanelCopy[activeTownPanel].title} placeholder`}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <header className="town-modal-header">
+                  <div>
+                    <p>{townPanelCopy[activeTownPanel].subtitle}</p>
+                    <h3>{townPanelCopy[activeTownPanel].title}</h3>
+                  </div>
+                  <button type="button" onClick={() => setActiveTownPanel(null)}>
+                    Seal
+                  </button>
+                </header>
+                <div className="town-modal-content">
+                  {townPanelCopy[activeTownPanel].lines.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
+                <footer className="town-modal-footer">
+                  <button type="button" onClick={() => setActiveTownPanel(null)}>
+                    Return to Terrune
+                  </button>
+                </footer>
+              </section>
             </div>
           )}
-          <div className="form-row">
-            <label htmlFor="seed">Run Seed</label>
-            <input id="seed" value={seed} onChange={(event) => setSeed(event.target.value)} />
-          </div>
-          <div className="controls">
-            <button disabled={!bootstrapData || seed.trim().length === 0} onClick={() => startRun(seed.trim())}>
-              Start Run
-            </button>
-            <button disabled={!hasSavedRun} onClick={resumeSavedRun}>
-              Resume Saved Run
-            </button>
-            <button disabled={!hasSavedRun} onClick={clearSavedRun}>
-              Clear Saved Run
-            </button>
-          </div>
         </section>
       )}
 
