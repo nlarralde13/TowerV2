@@ -24,8 +24,7 @@ export type TurnPhase = "player" | "enemies";
 export interface PlayerTurnState {
   movementAllowanceTiles: number;
   movementRemainingTiles: number;
-  actionAvailable: boolean;
-  bonusActionAvailable: boolean;
+  lastAttackRound: number;
 }
 
 export interface EnemyTurnState {
@@ -67,8 +66,7 @@ export function initializeRunTurnState(player: PlayerState): RunTurnState {
     player: {
       movementAllowanceTiles,
       movementRemainingTiles: movementAllowanceTiles,
-      actionAvailable: true,
-      bonusActionAvailable: true,
+      lastAttackRound: 0,
     },
     enemies: {
       pendingEnemyIds: [],

@@ -17,10 +17,10 @@ This repository contains both the design documents and the MVP implementation.
 
 ## MVP Features
 - Procedural floors
-- Unified turn-based tactical flow (exploration + combat share one turn engine)
+- Unified hybrid tick-based tactical flow (exploration + combat share one pacing model)
 - Enemies
 - Loot and rarity
-- Grid inventory + weight
+- Weight-based inventory
 - Extraction system
 - XP and leveling
 - Run summary
@@ -47,18 +47,24 @@ This repository contains both the design documents and the MVP implementation.
   - wander in a 3x3 around spawn
   - only pursue when player is within 2 tiles
 
-## Turn Economy Rules (Authoritative MVP)
-- `move 1 tile`: costs `movement` (1 tile)
-- `attack`: costs `action`
-- `loot pickup`: costs `action`
-- `open chest`: costs `action` (reserved for interactable implementation)
-- `open door`: costs `action` (reserved for interactable implementation)
-- `extract`: costs `full turn` (requires available action in player phase; consumes turn budget)
-- `consume item`: costs `action`
-- `equip/unequip`: `free action` (no action/movement cost, but player phase only)
-- `use key`: costs `action` (reserved for interactable implementation)
+## Hybrid Economy Rules (Authoritative MVP)
+- Action points and bonus actions are removed.
+- Movement is free (tile-based click pathing remains).
+- Stamina is the active pacing resource.
+- Baseline stamina values:
+  - `staminaMax = 50`
+  - `staminaCurrent = 50`
+  - `staminaRegenPerTick = 2`
+- Basic sword attack costs `5 stamina`.
+- Current interaction defaults:
+  - `loot pickup`: free
+  - `consume item`: free
+  - `equip/unequip`: free
+  - `extract`: free (condition-gated)
 
-Canonical table and helpers live in `src/game/systems/turnEconomy.ts`.
+Authoritative rules live in:
+- `The_Tower_Combat_Design_Doc.md`
+- `The_Tower_MVP_Technical_Architecture.md`
 
 ## Development Order
 1. Types

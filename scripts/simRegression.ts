@@ -320,29 +320,22 @@ async function runRegressionSuite(): Promise<void> {
     useRunStore.getState().movePlayerByDelta(stepDelta.x, stepDelta.y);
     const after = useRunStore.getState().run;
     assert.ok(after && after.status === "active");
-    const expectedRemaining = Math.max(0, before.turnState.player.movementRemainingTiles - 1);
     assert.equal(
       after.turnState.player.movementRemainingTiles,
-      expectedRemaining,
-      "Each successful movement step should spend exactly one movement tile.",
+      before.turnState.player.movementRemainingTiles,
+      "Hybrid mode movement should not consume per-turn movement budget.",
     );
   }
 
   const movementSpentRun = useRunStore.getState().run;
   assert.ok(movementSpentRun && movementSpentRun.status === "active");
-  const spentPosition = { ...movementSpentRun.player.position };
   useRunStore.getState().movePlayerByDelta(stepDelta.x, stepDelta.y);
   const blockedByBudgetRun = useRunStore.getState().run;
   assert.ok(blockedByBudgetRun && blockedByBudgetRun.status === "active");
   assert.equal(
-    blockedByBudgetRun.player.position.x,
-    spentPosition.x,
-    "Movement should fail once movement budget is exhausted.",
-  );
-  assert.equal(
-    blockedByBudgetRun.player.position.y,
-    spentPosition.y,
-    "Movement should not change position after movement budget is exhausted.",
+    blockedByBudgetRun.turnState.player.movementRemainingTiles,
+    movementSpentRun.turnState.player.movementRemainingTiles,
+    "Hybrid mode should not reduce movement budget on additional move attempts.",
   );
 
   // Prepare deterministic attack target for action-spend checks.
@@ -375,13 +368,14 @@ async function runRegressionSuite(): Promise<void> {
   assert.ok(beforeAttack && beforeAttack.status === "active");
   const roundBeforeAttack = beforeAttack.turnState.roundNumber;
   const torchBeforeAttack = beforeAttack.player.torch.fuelCurrent;
+  const staminaBeforeAttack = beforeAttack.player.vitals.staminaCurrent;
   useRunStore.getState().playerAttack();
   const afterFirstAttack = useRunStore.getState().run;
   assert.ok(afterFirstAttack && afterFirstAttack.status === "active");
   assert.equal(
-    afterFirstAttack.turnState.player.actionAvailable,
-    false,
-    "Successful attack should consume action for the turn.",
+    afterFirstAttack.player.vitals.staminaCurrent,
+    Math.max(0, staminaBeforeAttack - 5),
+    "Successful attack should consume stamina.",
   );
   assert.equal(
     afterFirstAttack.turnState.roundNumber,
@@ -395,6 +389,7 @@ async function runRegressionSuite(): Promise<void> {
   );
 
   const enemyHpAfterFirstAttack = afterFirstAttack.floors[afterFirstAttack.currentFloor].enemies[0]?.hpCurrent ?? 0;
+  const staminaAfterFirstAttack = afterFirstAttack.player.vitals.staminaCurrent;
   useRunStore.getState().playerAttack();
   const afterSecondAttackAttempt = useRunStore.getState().run;
   assert.ok(afterSecondAttackAttempt && afterSecondAttackAttempt.status === "active");
@@ -403,7 +398,12 @@ async function runRegressionSuite(): Promise<void> {
   assert.equal(
     enemyHpAfterSecondAttempt,
     enemyHpAfterFirstAttack,
-    "Second action-consuming attack in same turn should be blocked and not apply damage.",
+    "Second attack in the same tick should be blocked by global cooldown.",
+  );
+  assert.equal(
+    afterSecondAttackAttempt.player.vitals.staminaCurrent,
+    staminaAfterFirstAttack,
+    "Blocked attack should not consume stamina.",
   );
 
   const beforeEndTurn = useRunStore.getState().run;
@@ -427,7 +427,11 @@ async function runRegressionSuite(): Promise<void> {
       afterEndTurn.turnState.player.movementAllowanceTiles,
       "New player turn should reset movement budget.",
     );
-    assert.equal(afterEndTurn.turnState.player.actionAvailable, true, "New player turn should reset action availability.");
+    assert.equal(
+      afterEndTurn.player.vitals.staminaCurrent,
+      Math.min(afterEndTurn.player.totalStats.stamina, afterSecondAttackAttempt.player.vitals.staminaCurrent + 2),
+      "Each tick should regenerate stamina by the configured amount.",
+    );
     assert.ok(
       afterEndTurn.player.vitals.hpCurrent <= hpBeforeEnd,
       "Enemy phase should be able to apply damage before returning control to player.",

@@ -781,6 +781,7 @@ input {
 }
 
 .game-controls-row {
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: linear-gradient(180deg, #200d14, #15090f);

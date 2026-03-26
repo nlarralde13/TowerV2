@@ -1,10 +1,10 @@
-# THE TOWER - Inventory System Design Doc (v0.2)
+# THE TOWER - Inventory System Design Doc (v0.3)
 
 ## 1. Purpose
-Inventory is a tactical resource system that drives risk decisions during turn-based runs.
+Inventory is a tactical resource system that drives risk decisions during hybrid tick-paced runs.
 
 ## 2. Core Inventory Systems
-- Backpack grid
+- Weight-based inventory (no slot-count cap)
 - Equipment slots
 - Belt trinket slots (fixed 3)
 - Carry weight penalties
@@ -13,24 +13,27 @@ Inventory is a tactical resource system that drives risk decisions during turn-b
 ## 3. Belt Rule (Authoritative)
 - Belt is a trinket/perk customization row.
 - Belt is not a consumable quickbar.
-- Consumables are used from inventory.
+- Consumables are used from inventory lists/loadout flows.
 
-## 4. Turn Economy Integration
-- Consume item: action cost.
-- Loot pickup: action cost.
-- Equip/unequip: free action for MVP, but still player-phase only.
+## 4. Economy Integration
+- No action points or bonus actions.
+- Inventory interactions are free in MVP unless explicitly stamina-costed later.
+- Current default:
+  - Loot pickup: free
+  - Consume item: free
+  - Equip/unequip: free
 
 ## 5. Carry Weight
 Carry weight modifies movement effectiveness and creates extraction pressure.
 
 ## 6. MVP Scope
-- Grid inventory
+- Weight-based inventory list
 - Equipment management
 - 3-slot trinket belt
 - Item use/drop/pickup flows
-- Weight-aware stats
+- Tooltip-driven item details
 
 ## 7. Future Scope
-- Backpack upgrades
-- Auto-sort and rotation
-- Additional item interaction costs if needed
+- Optional stamina costs for selected inventory interactions
+- Auto-sort/filter tools
+- Backpack upgrades and advanced management UX

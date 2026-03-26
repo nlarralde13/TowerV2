@@ -45,6 +45,6 @@ export interface TurnUiStateSnapshot {
   phase: RunState["turnState"]["phase"];
   movementRemainingTiles: number;
   movementAllowanceTiles: number;
-  actionAvailable: boolean;
-  bonusActionAvailable: boolean;
+  staminaCurrent: number;
+  staminaMax: number;
 }

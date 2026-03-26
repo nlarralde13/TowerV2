@@ -1,4 +1,4 @@
-# THE TOWER - Extraction System Design Document (v0.2)
+# THE TOWER - Extraction System Design Document (v0.3)
 
 ## 1. Extraction Philosophy
 Extraction is a tactical commitment, not a background timer.
@@ -6,12 +6,12 @@ Extraction is a tactical commitment, not a background timer.
 ## 2. Core Extraction Rules
 - You keep only what you extract.
 - Dying loses run loot.
-- Extraction is resolved inside player phase rules.
+- Extraction follows run-state validity checks (location/rules), not action-point budgets.
 
-## 3. Turn Economy Rule
-- Extraction uses a full-turn style interaction cost.
-- It requires player phase and available action.
-- It does not run in enemy phase.
+## 3. Economy Rule
+- No action-point or bonus-action cost in MVP.
+- Extraction is currently free when requirements are met.
+- Extraction remains blocked by invalid context (wrong tile, unmet requirements, etc.).
 
 ## 4. Extraction Methods (Data-Driven)
 Keep extraction methods in `extractionRules.json` with floor and item requirements.
@@ -22,6 +22,6 @@ Keep extraction methods in `extractionRules.json` with floor and item requiremen
 - Successful extraction ends run and builds run summary
 
 ## 6. Future Scope
+- Optional stamina cost or cast-time mechanics
 - Additional extraction methods and penalties
-- More conditional extraction nodes
 - Event-driven extraction outcomes

@@ -15,9 +15,18 @@ import { LoadoutOverlay } from "./LoadoutOverlay";
 import { PlayerPanel } from "./PlayerPanel";
 
 const DEFAULT_SEED = "tower_run_001";
-const PLANNED_MOVE_STEP_DELAY_MS = 95;
+const WORLD_TICK_MS = 1200;
+const PLANNED_MOVE_STEP_DELAY_MS = 200;
+const POST_MOVE_COOLDOWN_MS = 600;
 const VIEWPORT_EVENT_LOG_LIMIT = 8;
-const EVENT_LOG_IGNORE_PREFIXES = ["Run started", "Saved run", "Run reset to menu", "Torch lit at"];
+const EVENT_LOG_IGNORE_PREFIXES = [
+  "Run started",
+  "Saved run",
+  "Run reset to menu",
+  "Torch lit at",
+  "Turn ended.",
+  "Round ",
+];
 
 export function GameLoopScreen() {
   const [seed, setSeed] = useState(DEFAULT_SEED);
@@ -30,6 +39,7 @@ export function GameLoopScreen() {
   const [isExecutingPlannedMove, setIsExecutingPlannedMove] = useState(false);
   const [hoveredConsoleItem, setHoveredConsoleItem] = useState<ItemTemplate | null>(null);
   const [showLoadoutOverlay, setShowLoadoutOverlay] = useState(false);
+  const [movementLockedUntilMs, setMovementLockedUntilMs] = useState(0);
   const actionLogListRef = useRef<HTMLDivElement | null>(null);
   const stickLogToBottomRef = useRef(true);
 
@@ -86,10 +96,10 @@ export function GameLoopScreen() {
       const activeRun = useRunStore.getState().run;
       if (!activeRun || activeRun.status !== "active") return;
       if (isExecutingPlannedMove) return;
-
       const key = event.key.toLowerCase();
       // Movement is click-only — no keyboard movement keys
       if (key === " ") {
+        if (Date.now() < movementLockedUntilMs) return;
         event.preventDefault();
         void confirmMovementPlan();
       } else if (key === "escape") {
@@ -99,12 +109,11 @@ export function GameLoopScreen() {
           return;
         }
         clearMovementPlan();
-      } else if (key === "f") {
+      } else if (key === "q") {
         event.preventDefault();
         playerAttack();
-      } else if (key === "enter" || key === "e") {
+      } else if (key === "w" || key === "r" || key === "t") {
         event.preventDefault();
-        endTurn();
       } else if (key === "g") {
         event.preventDefault();
         pickupLoot();
@@ -115,7 +124,7 @@ export function GameLoopScreen() {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [endTurn, isExecutingPlannedMove, movePlayerByDelta, pathPreviewTiles, pickupLoot, playerAttack, showLoadoutOverlay, tryExtract]);
+  }, [isExecutingPlannedMove, movementLockedUntilMs, movePlayerByDelta, pathPreviewTiles, pickupLoot, playerAttack, showLoadoutOverlay, tryExtract]);
 
   const currentFloor = run ? run.floors[run.currentFloor] : null;
   const visibleTiles = useMemo(() => currentFloor?.tiles.filter((tile) => tile.visible).length ?? 0, [currentFloor]);
@@ -231,18 +240,22 @@ export function GameLoopScreen() {
           config: DEFAULT_CAMERA_CONFIG,
         })
       : null;
-  const canUseTurnAction = run?.status === "active" && run.turnState.phase === "player" && run.turnState.player.actionAvailable;
   const canMoveTile = run?.status === "active" ? canPerformInteraction(run, "move_tile").allowed : false;
+  const canUseAttack =
+    run?.status === "active"
+      ? canPerformInteraction(run, "attack").allowed && run.turnState.player.lastAttackRound !== run.turnState.roundNumber
+      : false;
+  const canPickupLoot = run?.status === "active" ? canPerformInteraction(run, "loot_pickup").allowed : false;
   const canUseExtract = run?.status === "active" ? canPerformInteraction(run, "extract").allowed : false;
   const isPlayerPhase = run?.status === "active" && run.turnState.phase === "player";
   const hasPlannedMovement = pathPreviewTiles.length > 1;
-  const actionStateLabel =
-    run?.status === "active" ? (run.turnState.player.actionAvailable ? "Available" : "Spent") : "N/A";
-  const bonusActionStateLabel =
-    run?.status === "active" ? (run.turnState.player.bonusActionAvailable ? "Available" : "Spent") : "N/A";
   const movementStateLabel =
     run?.status === "active"
       ? `${run.turnState.player.movementRemainingTiles}/${run.turnState.player.movementAllowanceTiles}`
+      : "N/A";
+  const staminaStateLabel =
+    run?.status === "active"
+      ? `${run.player.vitals.staminaCurrent.toFixed(0)}/${run.player.totalStats.stamina.toFixed(0)}`
       : "N/A";
 
   function clearMovementPlan(): void {
@@ -251,25 +264,25 @@ export function GameLoopScreen() {
     setPathReachableThisTurn((current) => (current ? current : true));
   }
 
-  async function confirmMovementPlan(): Promise<void> {
+  async function confirmMovementPlan(pathOverride?: Vec2[]): Promise<void> {
     if (isExecutingPlannedMove) return;
+    if (Date.now() < movementLockedUntilMs) return;
     const activeRun = useRunStore.getState().run;
-    if (!activeRun || activeRun.status !== "active" || activeRun.turnState.phase !== "player") return;
-    if (!pathReachableThisTurn) return;
-    if (pathPreviewTiles.length < 2) return;
+    if (!activeRun || activeRun.status !== "active") return;
+    const activePath = pathOverride ?? pathPreviewTiles;
+    if (activePath.length < 2) return;
 
-    const plannedPath = pathPreviewTiles.slice();
-    const movementBudget = activeRun.turnState.player.movementRemainingTiles;
-    const stepsToTake = Math.min(movementBudget, plannedPath.length - 1);
+    const plannedPath = activePath.slice();
+    const stepsToTake = plannedPath.length - 1;
     if (stepsToTake <= 0) return;
 
     setIsExecutingPlannedMove(true);
     try {
       let cursor = { ...activeRun.player.position };
+      let movedAtLeastOnce = false;
       for (let stepIndex = 1; stepIndex <= stepsToTake; stepIndex += 1) {
         const liveRun = useRunStore.getState().run;
-        if (!liveRun || liveRun.status !== "active" || liveRun.turnState.phase !== "player") break;
-        if (liveRun.turnState.player.movementRemainingTiles <= 0) break;
+        if (!liveRun || liveRun.status !== "active") break;
 
         const nextStep = plannedPath[stepIndex];
         const dx = nextStep.x - cursor.x;
@@ -283,11 +296,15 @@ export function GameLoopScreen() {
         if (!moved) break;
 
         cursor = { ...afterMove.player.position };
+        movedAtLeastOnce = true;
         if (stepIndex < stepsToTake) {
           await new Promise<void>((resolve) => {
             window.setTimeout(resolve, PLANNED_MOVE_STEP_DELAY_MS);
           });
         }
+      }
+      if (movedAtLeastOnce) {
+        setMovementLockedUntilMs(Date.now() + POST_MOVE_COOLDOWN_MS);
       }
     } finally {
       setIsExecutingPlannedMove(false);
@@ -301,7 +318,7 @@ export function GameLoopScreen() {
       clearMovementPlan();
       return;
     }
-    if (run.turnState.phase !== "player" || run.turnState.player.movementRemainingTiles <= 0) {
+    if (run.turnState.phase !== "player") {
       clearMovementPlan();
       return;
     }
@@ -313,12 +330,25 @@ export function GameLoopScreen() {
     }
   }, [isExecutingPlannedMove, pathPreviewTiles, run]);
 
+  useEffect(() => {
+    if (!run || run.status !== "active") return;
+    const timerId = window.setInterval(() => {
+      const activeRun = useRunStore.getState().run;
+      if (!activeRun || activeRun.status !== "active") return;
+      if (useRunStore.getState().run?.turnState.phase !== "player") return;
+      endTurn();
+    }, WORLD_TICK_MS);
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [endTurn, run]);
+
   return (
     <main className="shell">
       <header className="topbar">
         <h1>The Tower MVP Slice</h1>
         <p>
-          Click tiles to move. Click enemies to target and face them. Space confirm move, Enter/E end turn, F attack, G pick up loot.
+          Click tiles to move. Click enemies to target and face them. Space confirm move, Q attack, G pick up loot.
         </p>
       </header>
 
@@ -357,7 +387,6 @@ export function GameLoopScreen() {
             <div className="game-workspace">
               <div className="hud hud-single-line">
                 <div className="hud-item">Status: {run.status}</div>
-                <div className="hud-item">Round: {run.turnState.roundNumber}</div>
                 <div className="hud-item">Phase: {run.turnState.phase}</div>
                 <div className="hud-item">Floor: {run.currentFloor}</div>
                 <div className="hud-item">
@@ -374,8 +403,7 @@ export function GameLoopScreen() {
                 <div className="hud-item">
                   Move: {run.turnState.player.movementRemainingTiles}/{run.turnState.player.movementAllowanceTiles}
                 </div>
-                <div className="hud-item">Action: {run.turnState.player.actionAvailable ? "ready" : "spent"}</div>
-                <div className="hud-item">Bonus: {run.turnState.player.bonusActionAvailable ? "ready" : "spent"}</div>
+                <div className="hud-item">Stamina: {staminaStateLabel}</div>
                 <div className="hud-item torch-inline">
                   <span>
                     Torch: {run.player.torch.fuelCurrent.toFixed(1)}/{run.player.torch.fuelMax.toFixed(1)}
@@ -405,19 +433,11 @@ export function GameLoopScreen() {
                   <strong>{movementStateLabel}</strong>
                 </div>
                 <div className="turn-status-block">
-                  <span className="turn-status-label">Action</span>
-                  <strong>{actionStateLabel}</strong>
-                </div>
-                <div className="turn-status-block">
-                  <span className="turn-status-label">Bonus Action</span>
-                  <strong>{bonusActionStateLabel}</strong>
-                </div>
-                <div className="turn-status-block">
-                  <span className="turn-status-label">Round</span>
-                  <strong>{run.turnState.roundNumber}</strong>
+                  <span className="turn-status-label">Stamina</span>
+                  <strong>{staminaStateLabel}</strong>
                 </div>
                 <div className="turn-status-hint">
-                  {isPlayerPhase ? "You can move/act now. End turn with Space or button." : "Wait for enemy phase to resolve."}
+                  {isPlayerPhase ? "You can move/act now. Enemy phase advances on global tick." : "Wait for enemy phase to resolve."}
                 </div>
               </div>
               <div className="combat-main-layout">
@@ -440,6 +460,7 @@ export function GameLoopScreen() {
                       onTileClick={(x, y) => {
                         if (!run || run.status !== "active") return;
                         if (isExecutingPlannedMove) return;
+                        if (Date.now() < movementLockedUntilMs) return;
                         const floor = run.floors[run.currentFloor];
                         if (!floor) return;
                         const start = run.player.position;
@@ -490,10 +511,56 @@ export function GameLoopScreen() {
                         }
 
                         setPathPreviewTiles(path);
-                        const movementBudget = run.turnState.player.movementRemainingTiles;
-                        setPathReachableThisTurn(path.length - 1 <= movementBudget);
+                        setPathReachableThisTurn(true);
+                        void confirmMovementPlan(path);
                       }}
                     />
+                  </div>
+
+                  <div className="controls game-controls-row">
+                    <div className="action-group">
+                      <button onClick={playerAttack} disabled={!canUseAttack}>
+                        Skill 1 (Q): Attack
+                      </button>
+                      <button disabled title="Skill placeholder">
+                        Skill 2 (W): Empty
+                      </button>
+                      <button disabled title="Skill placeholder">
+                        Skill 3 (R): Empty
+                      </button>
+                      <button disabled title="Skill placeholder">
+                        Skill 4 (T): Empty
+                      </button>
+                      <button onClick={pickupLoot} disabled={!canPickupLoot}>
+                        Pick Up Loot
+                      </button>
+                      <button onClick={tryExtract} disabled={!canUseExtract}>
+                        Extract
+                      </button>
+                      <button onClick={() => setShowLoadoutOverlay(true)} disabled={!bootstrapData}>
+                        Loadout
+                      </button>
+                    </div>
+                    <div className="action-group">
+                      <button
+                        onClick={() => {
+                          void confirmMovementPlan();
+                        }}
+                        disabled={
+                          !isPlayerPhase ||
+                          !canMoveTile ||
+                          !hasPlannedMovement ||
+                          !pathReachableThisTurn ||
+                          isExecutingPlannedMove ||
+                          Date.now() < movementLockedUntilMs
+                        }
+                      >
+                        Confirm Move [Space]
+                      </button>
+                      <button onClick={clearMovementPlan} disabled={isExecutingPlannedMove || (!hasPlannedMovement && !clickMoveTarget)}>
+                        Cancel Move [Esc]
+                      </button>
+                    </div>
                   </div>
 
                   <section className="run-events-panel panel" aria-live="polite" aria-label="Run events">
@@ -560,43 +627,6 @@ export function GameLoopScreen() {
                   targetedEnemyInstanceId={targetedEnemyInstance?.instanceId ?? null}
                 />
               </div>
-              <div className="controls game-controls-row">
-                <div className="action-group">
-                  <button onClick={playerAttack} disabled={!canUseTurnAction}>
-                    Attack
-                  </button>
-                  <button onClick={pickupLoot} disabled={!canUseTurnAction}>
-                    Pick Up Loot
-                  </button>
-                  <button onClick={tryExtract} disabled={!canUseExtract}>
-                    Extract
-                  </button>
-                  <button onClick={() => setShowLoadoutOverlay(true)} disabled={!bootstrapData}>
-                    Loadout
-                  </button>
-                </div>
-                <div className="action-group">
-                  <button
-                    onClick={() => {
-                      void confirmMovementPlan();
-                    }}
-                    disabled={!isPlayerPhase || !canMoveTile || !hasPlannedMovement || !pathReachableThisTurn || isExecutingPlannedMove}
-                  >
-                    Confirm Move [Space]
-                  </button>
-                  <button onClick={clearMovementPlan} disabled={isExecutingPlannedMove || (!hasPlannedMovement && !clickMoveTarget)}>
-                    Cancel Move [Esc]
-                  </button>
-                </div>
-                <button
-                  className="end-turn-button"
-                  onClick={endTurn}
-                  disabled={!isPlayerPhase}
-                  title="End your turn and resolve enemy phase"
-                >
-                  End Turn [Enter/E]
-                </button>
-              </div>
 
               {showLoadoutOverlay && bootstrapData && (
                 <LoadoutOverlay
@@ -640,4 +670,3 @@ export function GameLoopScreen() {
     </main>
   );
 }
-

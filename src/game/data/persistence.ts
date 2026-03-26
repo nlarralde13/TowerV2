@@ -262,8 +262,7 @@ function isRunTurnStateSnapshot(value: unknown): value is RunState["turnState"] 
   if (
     !isFiniteNumber(value.player.movementAllowanceTiles) ||
     !isFiniteNumber(value.player.movementRemainingTiles) ||
-    typeof value.player.actionAvailable !== "boolean" ||
-    (typeof value.player.bonusActionAvailable !== "undefined" && typeof value.player.bonusActionAvailable !== "boolean")
+    (typeof value.player.lastAttackRound !== "undefined" && !isFiniteNumber(value.player.lastAttackRound))
   ) {
     return false;
   }
@@ -404,16 +403,15 @@ function normalizeRunTurnState(
   }
   const movementAllowanceTiles = Math.max(0, Math.floor(turnState.player.movementAllowanceTiles));
   const movementRemainingTiles = Math.max(0, Math.min(movementAllowanceTiles, Math.floor(turnState.player.movementRemainingTiles)));
-  const bonusActionAvailable =
-    typeof turnState.player.bonusActionAvailable === "boolean" ? turnState.player.bonusActionAvailable : true;
+  const lastAttackRound =
+    typeof turnState.player.lastAttackRound === "number" ? Math.max(0, Math.floor(turnState.player.lastAttackRound)) : 0;
   return {
     roundNumber: Math.max(1, Math.floor(turnState.roundNumber)),
     phase: turnState.phase,
     player: {
       movementAllowanceTiles,
       movementRemainingTiles,
-      actionAvailable: turnState.player.actionAvailable,
-      bonusActionAvailable,
+      lastAttackRound,
     },
     enemies: {
       pendingEnemyIds: turnState.enemies.pendingEnemyIds,

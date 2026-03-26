@@ -1,7 +1,7 @@
-# THE TOWER - Floor Generation Design Doc (v0.2)
+# THE TOWER - Floor Generation Design Doc (v0.3)
 
 ## 1. Purpose
-Generate deterministic, readable floors that support tactical turn-based play.
+Generate deterministic, readable floors that support tactical tile-based hybrid pacing.
 
 ## 2. Core Guarantees
 - Entry and stairs path always valid.
@@ -9,10 +9,10 @@ Generate deterministic, readable floors that support tactical turn-based play.
 - No soft locks.
 - Deterministic from seed + floor rule.
 
-## 3. Turn-Based Support Requirements
+## 3. Hybrid Support Requirements
 Generated floors must support:
-- clear tile walkability for movement budgets
-- predictable line/adjacency for enemy phase AI
+- clear tile walkability for click pathing
+- predictable line/adjacency for tick-based enemy AI
 - room layouts that remain readable for tactical positioning
 
 ## 4. Spawn Tuning Direction

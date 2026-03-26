@@ -21,6 +21,8 @@ import { withActionLogs } from "../actionLog";
 import type { ActionLogEntryInput, RunBootstrapData, RunStoreState } from "../types";
 import { persistRunTransition } from "./persistenceSlice";
 
+const STAMINA_REGEN_PER_TICK = 2;
+
 export interface CombatSlice {
   movePlayerByDelta: (deltaX: number, deltaY: number) => void;
   setPlayerFacing: (facing: RunState["player"]["facing"]) => void;
@@ -120,13 +122,6 @@ function executeEnemyPhase(
   }
 
   const events: ActionLogEntryInput[] = [];
-  if (torchTick.burned > 0) {
-    events.push({
-      category: "system",
-      eventType: "torch_tick",
-      message: `Torch fuel -${torchTick.burned.toFixed(1)} (${syncedRun.player.torch.fuelCurrent.toFixed(1)}/${syncedRun.player.torch.fuelMax.toFixed(1)}).`,
-    });
-  }
   const hpLost = hpBefore - syncedRun.player.vitals.hpCurrent;
   if (hpLost > 0) events.push({ category: "combat", message: `Enemies hit you for ${hpLost} total damage.` });
   const killsGained = syncedRun.defeatedEnemyIds.length - killsBefore;
@@ -149,16 +144,24 @@ function advanceRound(run: RunState): RunState {
 
 function startNextPlayerTurn(run: RunState): RunState {
   const nextMovementAllowanceTiles = computeMovementTilesPerTurn(run.player.totalStats.movementFeet);
+  const staminaRegen = Math.max(STAMINA_REGEN_PER_TICK, run.player.totalStats.staminaRegen);
+  const staminaCurrent = Math.min(run.player.totalStats.stamina, run.player.vitals.staminaCurrent + staminaRegen);
   return {
     ...run,
+    player: {
+      ...run.player,
+      vitals: {
+        ...run.player.vitals,
+        staminaCurrent,
+      },
+    },
     turnState: {
       ...run.turnState,
       phase: "player",
       player: {
         movementAllowanceTiles: nextMovementAllowanceTiles,
         movementRemainingTiles: nextMovementAllowanceTiles,
-        actionAvailable: true,
-        bonusActionAvailable: true,
+        lastAttackRound: run.turnState.player.lastAttackRound,
       },
       enemies: {
         pendingEnemyIds: [],
@@ -213,7 +216,18 @@ export const createCombatSlice: StateCreator<
     });
 
     if (!result.moved) {
-      if (nextFacing === run.player.facing) return;
+      if (nextFacing === run.player.facing) {
+        const targetX = run.player.position.x + deltaX;
+        const targetY = run.player.position.y + deltaY;
+        const message =
+          result.reason === "out_of_bounds"
+            ? `Movement blocked: (${targetX}, ${targetY}) is out of bounds.`
+            : `Movement blocked by collision at (${targetX}, ${targetY}).`;
+        set((state) => ({
+          actionLog: withActionLogs(state.actionLog, [{ category: "system", message }]),
+        }));
+        return;
+      }
       const turnedRun: RunState = {
         ...run,
         player: { ...run.player, facing: nextFacing },
@@ -251,18 +265,19 @@ export const createCombatSlice: StateCreator<
       run: nextRun,
       hasSavedRun: persisted.hasSavedRun,
       profile: persisted.profile,
-      actionLog: withActionLogs(state.actionLog, [
-        {
-          category: "system",
-          message: `Moved to (${nextRun.player.position.x}, ${nextRun.player.position.y}). Movement ${nextRun.turnState.player.movementRemainingTiles}/${nextRun.turnState.player.movementAllowanceTiles}.`,
-        },
-      ]),
+      actionLog: state.actionLog,
     }));
   },
 
   playerAttack: () => {
     const { run, bootstrapData } = get();
     if (!run || !bootstrapData || run.status !== "active") return;
+    if (run.turnState.player.lastAttackRound === run.turnState.roundNumber) {
+      set((state) => ({
+        actionLog: withActionLogs(state.actionLog, [{ category: "combat", message: "Attack is on cooldown until next tick." }]),
+      }));
+      return;
+    }
     const actionGate = canPerformInteraction(run, "attack");
     if (!actionGate.allowed) {
       const message = explainTurnEconomyFailure(actionGate.reason, "Cannot attack outside the player phase.");
@@ -287,6 +302,16 @@ export const createCombatSlice: StateCreator<
     }
 
     let nextRun: RunState = applyInteractionCost(attacked.run, "attack");
+    nextRun = {
+      ...nextRun,
+      turnState: {
+        ...nextRun.turnState,
+        player: {
+          ...nextRun.turnState.player,
+          lastAttackRound: run.turnState.roundNumber,
+        },
+      },
+    };
     nextRun.floors[nextRun.currentFloor] = syncFloorOccupancy(nextRun.floors[nextRun.currentFloor]);
 
     const persisted = persistRunTransition(nextRun, get().profile, bootstrapData);
@@ -340,13 +365,7 @@ export const createCombatSlice: StateCreator<
       run: nextRun,
       hasSavedRun: persisted.hasSavedRun,
       profile: persisted.profile,
-      actionLog: withActionLogs(state.actionLog, [
-        { category: "system", message: `Turn ended. Resolving enemy phase for round ${run.turnState.roundNumber}.` },
-        ...enemyPhaseResult.events,
-        ...(nextRun.status === "active"
-          ? [{ category: "system" as const, message: `Round ${nextRun.turnState.roundNumber} started. Player phase active.` }]
-          : []),
-      ]),
+      actionLog: withActionLogs(state.actionLog, enemyPhaseResult.events),
     }));
   },
 });

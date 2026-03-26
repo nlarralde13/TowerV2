@@ -134,13 +134,38 @@ export const createLootSlice: StateCreator<RunStoreState & LootSlice, [], [], Lo
       return;
     }
 
-    const pickedUp = pickupLootAtPosition({ run, bootstrapData, x: run.player.position.x, y: run.player.position.y });
-    if (!pickedUp.pickedUpAny) {
-      set((state) => ({ actionLog: withActionLogs(state.actionLog, [{ category: "loot", message: "No loot to pick up here." }]) }));
+    const origin = run.player.position;
+    const pickupPositions: Array<{ x: number; y: number }> = [];
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        pickupPositions.push({ x: origin.x + dx, y: origin.y + dy });
+      }
+    }
+
+    let workingRun = run;
+    let pickedUpAny = false;
+    const pickedItems: PickedLootEntry[] = [];
+    for (const position of pickupPositions) {
+      const result = pickupLootAtPosition({
+        run: workingRun,
+        bootstrapData,
+        x: position.x,
+        y: position.y,
+      });
+      workingRun = result.run;
+      if (!result.pickedUpAny) continue;
+      pickedUpAny = true;
+      pickedItems.push(...result.pickedItems);
+    }
+
+    if (!pickedUpAny) {
+      set((state) => ({
+        actionLog: withActionLogs(state.actionLog, [{ category: "loot", message: "No loot to pick up within reach (1 tile)." }]),
+      }));
       return;
     }
 
-    let nextRun = applyInteractionCost(pickedUp.run, "loot_pickup");
+    let nextRun = applyInteractionCost(workingRun, "loot_pickup");
     nextRun.floors[nextRun.currentFloor] = syncFloorOccupancy(nextRun.floors[nextRun.currentFloor]);
 
     const persisted = persistRunTransition(nextRun, get().profile, bootstrapData);
@@ -150,8 +175,8 @@ export const createLootSlice: StateCreator<RunStoreState & LootSlice, [], [], Lo
       profile: persisted.profile,
       actionLog: withActionLogs(
         state.actionLog,
-        pickedUp.pickedItems.length > 0
-          ? pickedUp.pickedItems.map((entry) => ({
+        pickedItems.length > 0
+          ? pickedItems.map((entry) => ({
               category: "loot" as const,
               eventType: "loot_pickup_item",
               message: `Picked up ${entry.quantity}x ${entry.itemName}.`,

@@ -1,7 +1,7 @@
-# THE TOWER - MVP Technical Architecture (v0.3)
+# THE TOWER - MVP Technical Architecture (v0.4)
 
 ## 1. MVP Goal
-Deliver a playable vertical slice with one unified turn engine across exploration and combat.
+Deliver a playable vertical slice with grid movement and hybrid tick-based combat pacing.
 
 ---
 
@@ -19,29 +19,28 @@ Deliver a playable vertical slice with one unified turn engine across exploratio
 ## 3. Architecture Principles
 - Engine logic is separate from rendering/UI.
 - Data-driven balancing via JSON.
-- Deterministic systems (seeded generation and explicit turn order).
-- One dominant timing model only.
+- One dominant gameplay timing model.
+- Tick pacing is authoritative; no player-facing turn step is required.
 
 ---
 
 ## 4. Authoritative Gameplay Timing
-Turn state in `RunState` is source of truth:
-- `roundNumber`
-- `phase` (`player` | `enemies`)
-- Player movement/action budget
-- Enemy phase queue metadata
-- Future extension slots (initiative/actor budgets/status effects)
+The run uses a global tick model:
+- `tickIntervalMs = 1200`
+- Player stamina regenerates `+2` per tick
+- Enemies evaluate/act once per tick
+
+No action points or bonus actions in the active ruleset.
 
 ---
 
-## 5. Unified Turn Flow
-1. Start player phase with refreshed movement/action.
-2. Player uses movement/action.
-3. Player manually ends turn.
-4. Enemy phase resolves enemy AI actions.
-5. Round advances.
-6. Torch drains per round.
-7. Next player phase starts.
+## 5. Hybrid Gameplay Flow
+1. Player moves by click-to-path (tile-based).
+2. Player issues actions via skill bar/buttons (Q/W/R/T).
+3. Global ticks continue advancing world state.
+4. Enemy AI resolves during tick updates.
+5. Stamina gates player action frequency.
+6. Torch and run state updates remain internal timing concerns.
 
 ---
 
@@ -54,94 +53,46 @@ Turn state in `RunState` is source of truth:
 ---
 
 ## 7. Input Model
-
-**Movement is click-only.**
-- Canvas tile-click computes a path via `findPath`.
-- Path is previewed on canvas (blue = reachable, red = out of range).
-- Enter confirms the path; Escape cancels.
-- WASD and arrow keys do **not** move the player.
-
-**Enemy targeting:**
-- Clicking an enemy tile faces the player toward that enemy (`setPlayerFacing`) and marks it as the active target.
-- The targeted enemy is highlighted on canvas (amber ring + lighter body).
-- Attack (F key or Attack button) hits the tile directly in front of the player's facing direction.
-
-**Other keyboard hotkeys:** F (attack), G (loot), E (extract), Space (end turn), I/C/L/J (panels).
+- Movement is click-only.
+- Space confirms planned movement, Escape cancels.
+- Skill hotkeys: `Q`, `W`, `R`, `T` (`Q` is basic attack in MVP).
+- `G` picks up nearby loot.
+- No End Turn control in hybrid mode.
 
 ---
 
-## 8. HUD & Feedback Layer
-
-### Canvas overlays (always visible)
-- **Player HP bar** (bottom-left): green → amber → red, shows current/max HP.
-- **Player SP bar** (below HP): blue stamina bar, shows current/max.
-- **Enemy HP mini-bars**: drawn above every visible enemy circle, colour-coded by HP %.
-- **Enemy target box** (top-right, shown when enemy is targeted): name, HP bar, tier, role label.
-
-### Action log (right panel, L key)
-All combat events generate named, categorised log entries:
-- Miss: `Missed [EnemyName]!`
-- Hit: `Hit [EnemyName] for [N] damage.`
-- Crit: `Hit [EnemyName] for [N] damage. ★ CRIT` (warning level, visually distinct)
-- Kill: `[EnemyName] was defeated!`
-- Enemy phase: damage total, kill count, loot drops.
-
-### Viewport event console (below canvas)
-Shows last 8 meaningful events (combat, loot, system) with timestamps.
-Filtered to exclude noisy system messages (run start, save status, torch light).
+## 8. Economy Model
+- Removed: action points, bonus actions, full-turn costs.
+- Added: stamina-first action gating.
+- Canonical starting stamina values:
+  - `staminaMax = 50`
+  - `staminaCurrent = 50`
+  - `staminaRegenPerTick = 2`
+- Basic sword attack cost: `5 stamina`.
 
 ---
 
-## 9. Combat Stats Added to PlayerStatSet
-
-Two new stats were added as part of the turn-based combat rebalance:
-
-| Stat | Type | Default | Description |
-|------|------|---------|-------------|
-| `hitChance` | float 0–1 | 0.75 | Probability to hit per attack. Capped at 1.0. |
-| `critMultiplier` | float ≥1.0 | 1.5 | Damage multiplier on a critical hit. Floored at 1.0. |
-
-These are set from `playerDefaults.json`, stacked additively with equipment bonuses, and clamped in `playerStats.ts`.
-
-Enemy templates also gained an explicit `defense` field (flat damage reduction vs player attacks).
+## 9. Persistence
+Run saves must persist hybrid timing and stamina state safely.
+Older saves missing stamina/tick fields must normalize to safe defaults.
 
 ---
 
-## 10. Deprecated Direction (Removed)
-The architecture no longer targets:
-- Continuous/sub-tile player controller
-- Mixed continuous/discrete combat timing
-- Real-time combat loop
-- Post-action enemy auto-resolution
-- WASD keyboard movement
+## 10. Testing/Regression Requirements
+Coverage should verify:
+- Tick interval pacing behavior
+- Stamina spend and regen
+- Attack blocked when stamina is insufficient
+- Enemy update cadence per tick
+- Movement remains tile-based and free in MVP
+- Save migration/defaulting for stamina/timing fields
 
 ---
 
-## 11. Persistence
-Run saves must persist turn state and safely migrate old saves without turn data.
-Invalid or missing turn fields must be normalized with safe defaults.
-New stats (`hitChance`, `critMultiplier`) in `PlayerStatSet` are initialized to 0 by `createEmptyStatSet`; saves created before these fields existed will pick up the base values from `playerDefaults` on the next new run.
-
----
-
-## 12. Testing/Regression Requirements
-Simulation/regression coverage must verify:
-- Movement allowance per turn
-- One action per turn
-- Explicit enemy phase sequencing
-- Round advance
-- Torch drain per round
-- Save migration for turn state
-- Hit/miss/crit combat resolution
-
----
-
-## 13. Expansion Path
-Keep types/helpers extensible for:
-- Initiative ordering
-- Per-actor budgets
-- Reactions/status effects
-- Terrain movement costs
-- Click-to-attack on adjacent enemy tiles
-- Dodge/block actions consuming stamina
-without replacing the current architecture.
+## 11. Expansion Path
+Keep architecture extensible for:
+- Per-skill cooldowns
+- Per-enemy cadence tuning
+- Status effects and terrain costs
+- Deeper skill system on `Q/W/R/T`
+without replacing the hybrid tick foundation.

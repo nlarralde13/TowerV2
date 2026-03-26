@@ -12,21 +12,18 @@ export type InteractionId =
   | "unequip"
   | "use_key";
 
-export type InteractionCostKind = "movement" | "action" | "bonus_action" | "full_turn" | "free";
+export const BASE_ATTACK_STAMINA_COST = 5;
 
 export interface InteractionCostRule {
-  kind: InteractionCostKind;
+  staminaCost: number;
   movementTilesCost: number;
-  actionCost: boolean;
-  bonusActionCost: boolean;
   consumeAllRemainingMovement: boolean;
   description: string;
 }
 
 export type TurnEconomyFailureReason =
   | "not_player_phase"
-  | "no_action_available"
-  | "no_bonus_action_available"
+  | "insufficient_stamina"
   | "insufficient_movement";
 
 export interface TurnEconomyGateResult {
@@ -35,111 +32,81 @@ export interface TurnEconomyGateResult {
 }
 
 /**
- * Authoritative interaction cost table for turn economy.
- *
- * Kinds:
- * - movement: consumes movement tiles only
- * - action: consumes the turn action only
- * - bonus_action: consumes the turn bonus action only
- * - full_turn: consumes action and clears remaining movement
- * - free: does not consume movement or action
+ * Authoritative interaction cost table for hybrid stamina economy.
  */
 export const INTERACTION_COST_RULES: Record<InteractionId, InteractionCostRule> = {
   move_tile: {
-    kind: "movement",
-    movementTilesCost: 1,
-    actionCost: false,
-    bonusActionCost: false,
+    staminaCost: 0,
+    movementTilesCost: 0,
     consumeAllRemainingMovement: false,
-    description: "Move one orthogonal tile.",
+    description: "Move one orthogonal tile (hybrid mode: no movement cap).",
   },
   attack: {
-    kind: "action",
+    staminaCost: BASE_ATTACK_STAMINA_COST,
     movementTilesCost: 0,
-    actionCost: true,
-    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Melee or ranged attack.",
   },
   loot_pickup: {
-    kind: "action",
+    staminaCost: 0,
     movementTilesCost: 0,
-    actionCost: true,
-    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Pick up loot from ground tile.",
   },
   open_chest: {
-    kind: "action",
+    staminaCost: 0,
     movementTilesCost: 0,
-    actionCost: true,
-    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Open chest interactable.",
   },
   open_door: {
-    kind: "action",
+    staminaCost: 0,
     movementTilesCost: 0,
-    actionCost: true,
-    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Open door interactable.",
   },
   extract: {
-    kind: "full_turn",
+    staminaCost: 0,
     movementTilesCost: 0,
-    actionCost: true,
-    bonusActionCost: false,
-    consumeAllRemainingMovement: true,
+    consumeAllRemainingMovement: false,
     description: "Extract from floor and end run.",
   },
   consume_item: {
-    kind: "bonus_action",
+    staminaCost: 0,
     movementTilesCost: 0,
-    actionCost: false,
-    bonusActionCost: true,
     consumeAllRemainingMovement: false,
-    description: "Consume usable item (bonus action).",
+    description: "Consume usable item.",
   },
   equip: {
-    kind: "free",
+    staminaCost: 0,
     movementTilesCost: 0,
-    actionCost: false,
-    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Equip item to a valid slot.",
   },
   unequip: {
-    kind: "free",
+    staminaCost: 0,
     movementTilesCost: 0,
-    actionCost: false,
-    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Unequip item back to inventory.",
   },
   use_key: {
-    kind: "action",
+    staminaCost: 0,
     movementTilesCost: 0,
-    actionCost: true,
-    bonusActionCost: false,
     consumeAllRemainingMovement: false,
     description: "Use key on locked interactable.",
   },
 };
 
 export function canPerformInteraction(
-  run: Pick<RunState, "status" | "turnState">,
+  run: Pick<RunState, "status" | "turnState" | "player">,
   interactionId: InteractionId,
 ): TurnEconomyGateResult {
   if (run.status !== "active" || run.turnState.phase !== "player") {
     return { allowed: false, reason: "not_player_phase" };
   }
   const rule = INTERACTION_COST_RULES[interactionId];
-  if (rule.actionCost && !run.turnState.player.actionAvailable) {
-    return { allowed: false, reason: "no_action_available" };
-  }
-  if (rule.bonusActionCost && !run.turnState.player.bonusActionAvailable) {
-    return { allowed: false, reason: "no_bonus_action_available" };
+  if (rule.staminaCost > run.player.vitals.staminaCurrent) {
+    return { allowed: false, reason: "insufficient_stamina" };
   }
   if (rule.movementTilesCost > run.turnState.player.movementRemainingTiles) {
     return { allowed: false, reason: "insufficient_movement" };
@@ -152,16 +119,22 @@ export function applyInteractionCost(run: RunState, interactionId: InteractionId
   const movementRemainingTiles = rule.consumeAllRemainingMovement
     ? 0
     : Math.max(0, run.turnState.player.movementRemainingTiles - rule.movementTilesCost);
+  const staminaCurrent = Math.max(0, run.player.vitals.staminaCurrent - rule.staminaCost);
 
   return {
     ...run,
+    player: {
+      ...run.player,
+      vitals: {
+        ...run.player.vitals,
+        staminaCurrent,
+      },
+    },
     turnState: {
       ...run.turnState,
       player: {
         ...run.turnState.player,
         movementRemainingTiles,
-        actionAvailable: rule.actionCost ? false : run.turnState.player.actionAvailable,
-        bonusActionAvailable: rule.bonusActionCost ? false : run.turnState.player.bonusActionAvailable,
       },
     },
   };
@@ -174,11 +147,8 @@ export function explainTurnEconomyFailure(
   if (reason === "not_player_phase") {
     return fallbackOutsidePlayerPhase;
   }
-  if (reason === "no_action_available") {
-    return "Action already used this turn.";
-  }
-  if (reason === "no_bonus_action_available") {
-    return "Bonus action already used this turn.";
+  if (reason === "insufficient_stamina") {
+    return "Not enough stamina.";
   }
   return "Not enough movement remaining.";
 }

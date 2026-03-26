@@ -1,61 +1,68 @@
-# THE TOWER - TypeScript Interfaces Design Doc (v0.2)
+# THE TOWER - TypeScript Interfaces Design Doc (v0.3)
 
 ## 1. Purpose
-Define runtime and persistence interfaces for the unified turn-based engine.
+Define runtime and persistence interfaces for the hybrid tick-based ruleset.
 
 ## 2. Core Direction
-- Replace legacy `StatBlock`/`player.stats` assumptions with modern player stat sets.
-- `RunState.turnState` is authoritative for phase/round/action economy.
-- Keep interfaces extensible for initiative and actor budgets.
+- Replace action-point assumptions with stamina-driven action gating.
+- Keep grid movement and pathing tile-based.
+- Keep timing state centralized and extensible.
 
 ## 3. Key Runtime Contracts
 
-### 3.1 Player Stats
-Use explicit stat sets (base/equipment/buff/total) including `movementFeet`.
-Derived movement per turn = `floor(movementFeet / 5)` tiles.
+### 3.1 Player Stats/Vitals
+Player runtime state must include stamina fields:
+- `staminaCurrent`
+- `staminaMax`
+- `staminaRegenPerTick`
 
-### 3.2 RunTurnState
-Must include:
-- `roundNumber`
-- `phase` (`player` | `enemies`)
-- `player` budget (`movementAllowanceTiles`, `movementRemainingTiles`, `actionAvailable`)
-- `enemies` phase metadata (`pendingEnemyIds`, `activeEnemyId`)
-- `future` extension block (`initiativeOrder`, `currentActorId`, `actorBudgets`, terrain/status placeholders)
+Combat and skill use spend stamina instead of action/bonus-action flags.
+
+### 3.2 Timing State
+Run timing state should include:
+- `tickIntervalMs`
+- `tickCount` (or equivalent monotonically increasing tick marker)
+- optional cadence metadata for player/enemy update windows
+
+Legacy turn-oriented fields may exist during migration but are not authoritative for gameplay economy.
 
 ### 3.3 RunState
 Must include:
 - run identity/status/floor
-- `turnState`
-- `player`
+- player state (including stamina)
 - floors/discovery/defeated/extracted tracking
+- timing state
 - optional run summary
 
 ### 3.4 EnemyTemplate / EnemyInstance
-Enemy templates stay data-driven (`attackRange`, `aggroRange`, `speed`, etc.).
-Enemy instances track runtime state (`idle|patrol|aggro|attacking|dead`) and phase execution outcomes.
+Enemy templates remain data-driven (`attackRange`, `aggroRange`, `speed`, etc.).
+Enemy instances track runtime behavior state and tick-driven execution outcomes.
 
 ### 3.5 Inventory Contracts
-- Belt is `Array<ItemInstance | null>` fixed to 3 slots in MVP.
-- Belt accepts trinket behavior only.
+- Belt remains a fixed 3-slot trinket/perk row.
+- Belt is not a consumable quickbar.
 
 ## 4. Persistence Contracts
 ### 4.1 RunSave
-Run save schema must include optional/normalized `turnState` for backwards compatibility.
+Save schema must include stamina and timing state fields used by hybrid pacing.
 
 ### 4.2 Migration Rule
-Missing/invalid turn-state fields must normalize to safe defaults derived from player stats.
+Missing/invalid stamina or timing fields must normalize safely:
+- `staminaMax = 50`
+- `staminaCurrent = staminaMax`
+- `staminaRegenPerTick = 2`
+- `tickIntervalMs = 1200`
 
 ## 5. Store Type Guidance
-Store-facing types should expose turn info in a UI-friendly snapshot shape:
-- phase
-- round
-- movement remaining/allowance
-- action availability
+Store-facing snapshots should expose UI-friendly values:
+- stamina current/max
+- skill affordability (cost checks)
+- timing/cooldown indicators (when present)
 
 ## 6. Extension Guidance
 Interfaces must remain open to:
-- initiative ordering
-- per-actor movement/action budgets
-- terrain movement costs
-- status effects/reactions
-without replacing current `RunTurnState`.
+- per-skill cooldowns
+- per-enemy cadence variations
+- status effects and terrain costs
+- future initiative-like modes if needed
+without replacing hybrid timing structures.

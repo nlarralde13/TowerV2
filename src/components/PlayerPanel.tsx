@@ -140,8 +140,6 @@ export function PlayerPanel({ player, turnState, itemTemplates, xpTable }: Playe
         <div>Carry: {weight.currentWeight.toFixed(1)}/{weight.maxWeight.toFixed(1)}</div>
         <div>Torch: {player.torch.fuelCurrent.toFixed(1)}/{player.torch.fuelMax.toFixed(1)}</div>
         <div>Move: {turnState.player.movementRemainingTiles}/{turnState.player.movementAllowanceTiles}</div>
-        <div>Action: {turnState.player.actionAvailable ? "Ready" : "Spent"}</div>
-        <div>Bonus: {turnState.player.bonusActionAvailable ? "Ready" : "Spent"}</div>
       </div>
       <div className="combat-panel-future-slot">
         Buffs / Debuffs / Equipment indicators
